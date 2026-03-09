@@ -69,4 +69,4 @@ See any existing country plugin for the structure. Open an issue or PR to get st
 
 ## License
 
-Proprietary - Arfiti OÜ
+[MIT](./LICENSE) - Arfiti OÜ
