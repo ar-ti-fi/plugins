@@ -1,0 +1,8 @@
+{
+  "name": "arfiti-ee-annual-report",
+  "description": "Estonian Annual Report (majandusaasta aruanne) preparation for the e-Business Register. Guides step-by-step through financial statements, notes, management report, and XBRL filing.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Arfiti"
+  }
+}
