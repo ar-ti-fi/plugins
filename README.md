@@ -23,14 +23,14 @@ More countries coming soon.
 ### Option 1: Clone the repository
 
 ```bash
-git clone https://github.com/porydchik/ar-ti-fi.git
+git clone https://github.com/ar-ti-fi/plugins.git
 ```
 
 Add the plugin directory to your Claude Desktop project or Cursor workspace.
 
 ### Option 2: Download ZIP
 
-[Download latest ZIP](https://github.com/porydchik/ar-ti-fi/archive/refs/heads/main.zip)
+[Download latest ZIP](https://github.com/ar-ti-fi/plugins/archive/refs/heads/main.zip)
 
 ### Option 3: Via Arfiti admin dashboard
 
