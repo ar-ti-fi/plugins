@@ -1,20 +1,26 @@
 # Arfiti Plugins
 
-AI-powered plugins that give finance and accounting teams superpowers inside Claude, Cursor, and other AI tools. Each plugin packages country-specific compliance knowledge, tax rules, and reporting formats so your AI assistant handles the details correctly.
-
-## Why plugins?
-
-Accounting rules differ by country. A VAT return in Estonia looks nothing like one in Germany or the UK. These plugins encode that knowledge — tax formulas, filing formats, regulatory deadlines, XBRL taxonomies — so your AI assistant produces compliant output without hallucinating rules.
+AI-powered plugins that give finance and accounting teams superpowers inside Claude, Cursor, and other AI tools. Each plugin packages domain knowledge — reporting formats, tax rules, compliance workflows — so your AI assistant handles the details correctly.
 
 ## Available Plugins
 
+### Core
+
+Universal plugins that work with any chart of accounts and any country.
+
+| Plugin | What it does | Commands |
+|--------|-------------|----------|
+| [arfiti-core-financial-reports](./arfiti-core-financial-reports) | Financial reporting suite: Balance Sheet, P&L, Cash Flow, Trial Balance, Aging Analysis, and Dimension Analysis. Discovers account properties dynamically — works with any COA. | `/balance-sheet` `/profit-and-loss` `/cash-flow` `/trial-balance` `/aged-receivables` `/aged-payables` `/dimension-analysis` `/financial-summary` |
+| [arfiti-core-budget-planning](./arfiti-core-budget-planning) | Budget planning: annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting. | `/create-budget` `/forecast-budget` `/preview-budget` `/review-variance` |
+| [arfiti-core-cost-allocation](./arfiti-core-cost-allocation) | Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice with full traceability). | `/run-allocation` `/preview-allocation` |
+
 ### Estonia (EE)
 
-| Plugin | What it does |
-|--------|-------------|
-| [arfiti-ee-annual-report](./arfiti-ee-annual-report) | Prepares the full annual report (balance sheet, income statement, notes, management report) and generates XBRL mapping for e-Business Register filing. Uses the et-gaap-2026 taxonomy. |
-| [arfiti-ee-payroll-calculator](./arfiti-ee-payroll-calculator) | Calculates gross-to-net payroll with Estonian tax formulas (social tax, income tax, unemployment insurance, funded pension) and generates TSD declarations for EMTA. |
-| [arfiti-ee-vat-declaration](./arfiti-ee-vat-declaration) | Prepares VAT returns (KMD form), KMD INF annexes, and EC Sales Lists. Validates against Estonian tax codes and VAT rates. |
+| Plugin | What it does | Commands |
+|--------|-------------|----------|
+| [arfiti-ee-annual-report](./arfiti-ee-annual-report) | Prepares the full annual report (balance sheet, income statement, notes, management report) and generates XBRL for e-Business Register filing. Uses the et-gaap-2026 taxonomy. | `/prepare-annual-report` `/check-prerequisites` `/generate-xbrl-file` |
+| [arfiti-ee-payroll-calculator](./arfiti-ee-payroll-calculator) | Calculates gross-to-net payroll with Estonian tax formulas (social tax, income tax, unemployment insurance, funded pension) and generates TSD declarations for EMTA. | `/calculate-payroll` `/generate-tsd` |
+| [arfiti-ee-vat-declaration](./arfiti-ee-vat-declaration) | Prepares VAT returns (KMD form), KMD INF annexes, and EC Sales Lists. Dynamically discovers tax codes and maps to KMD lines. | `/prepare-vat-declaration` `/validate-vat-return` `/prepare-ec-sales-list` |
 
 More countries coming soon.
 
@@ -49,13 +55,16 @@ plugin-name/
     skill-name/
       SKILL.md                  # Step-by-step workflow with checkpoints
       references/               # Tax tables, form structures, filing guides
+  scripts/                      # Deterministic generators (XML, XBRL, etc.)
 ```
 
 **Commands** are entry points — the user types `/prepare-vat-declaration` and the AI follows the workflow defined in the skill.
 
-**Skills** contain the actual knowledge — multi-step workflows with mandatory checkpoints, validation rules, and reference data (tax rates, form field mappings, filing instructions).
+**Skills** contain the actual knowledge — multi-step workflows with mandatory checkpoints, validation rules, and reference data.
 
 **References** are the source of truth — tax formulas, XBRL element mappings, regulatory form structures. The AI reads these instead of guessing.
+
+**Scripts** generate deterministic output (XBRL, XML declarations) where AI generation would be unreliable. Claude builds compact JSON, the script produces valid XML with hardcoded namespaces and validated structure.
 
 ## Contributing a Country Plugin
 
