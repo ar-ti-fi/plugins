@@ -1,0 +1,8 @@
+{
+  "name": "arfiti-core-financial-reports",
+  "description": "Financial reporting suite: Balance Sheet, Profit & Loss, Cash Flow, Trial Balance, Aging Analysis, and Dimension Analysis. Works with any chart of accounts by discovering account properties dynamically.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Arfiti"
+  }
+}

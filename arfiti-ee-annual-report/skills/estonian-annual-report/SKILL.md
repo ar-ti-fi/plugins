@@ -112,11 +112,38 @@ Generate a comprehensive summary document with:
 - Management report with KPIs
 - Profit allocation proposal
 - Validation checklist results
-- XBRL mapping table from **references/xbrl-mapping.md**
 
-### Step 11: Filing Guidance
+### Step 11: Generate XBRL Files
 
-Provide the user with step-by-step portal entry instructions from **references/e-business-register.md**.
+Generate the XBRL files for upload to ariregister.rik.ee using **references/xbrl-generation.md** as the complete reference.
+
+**CRITICAL before generating — read the "CRITICAL RULES" section at the top of xbrl-generation.md:**
+- Taxonomy namespace is EXACTLY `http://xbrl.eesti.ee/taxonomy/et-gaap_2026-01-01/` (trailing slash required)
+- Entity identifier scheme is EXACTLY `http://xbrl.eesti.ee/estonian_commercial_register`
+- Use ONLY element names from the mapping tables — never invent names (e.g., `Cash` is WRONG, use `CashAndCashEquivalents`)
+- Declare ONLY the `iso4217:EUR` unit — never declare `xbrli:pure`
+- No XML comments in the output files
+- No other taxonomy namespaces (`dei`, `us-gaap`, etc.)
+
+Steps:
+1. **Determine required roles** based on company size and available data (see Role Catalog in xbrl-generation.md)
+2. **Generate companion XSD** (`Vormid_{REGCODE}.xsd`) with linkbase references for each selected role
+3. **Build context definitions** — instant (I1, I2), duration (D21), and dimensional contexts for notes
+4. **Map all financial values to XBRL elements** using the element mapping tables in xbrl-generation.md
+5. **Generate instance document** (`Aruanne_{REGCODE}.xbrl`) with all contexts, unit, and fact values
+6. **Validate** — BS balances, net profit consistency, cash flow reconciliation, context references, XSD completeness
+
+Write both files to the user's specified output directory. These two files are all that's needed for XBRL upload.
+
+Alternatively, the user can run `/arfiti-ee:generate-xbrl-file` as a standalone command.
+
+### Step 12: Filing Guidance
+
+Provide the user with filing instructions from **references/e-business-register.md**.
+
+**Primary method: XBRL file upload** — upload the generated `.xsd` and `.xbrl` files directly to the portal. This is faster and less error-prone than manual form entry.
+
+**Fallback method: Manual portal entry** — use the XBRL mapping table from **references/xbrl-mapping.md** to fill in portal forms.
 
 Remind: filing deadline is 6 months after fiscal year end (typically June 30). The report must be digitally signed by board members.
 

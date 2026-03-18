@@ -1,0 +1,79 @@
+{
+  "_comment": "Income Statement input schema. Claude builds this from generate_report('income_statement', ...) output.",
+  "entity_name": "Acme Corp OÜ",
+  "start_date": "2026-01-01",
+  "end_date": "2026-03-31",
+  "currency": "EUR",
+  "format": "nature",
+
+  "revenue": [
+    {"name": "Product sales", "amount": 380000.00},
+    {"name": "Service revenue", "amount": 120000.00}
+  ],
+
+  "other_income": [
+    {"name": "Other operating income", "amount": 5000.00}
+  ],
+
+  "cogs": [
+    {"name": "Cost of goods sold", "amount": 220000.00}
+  ],
+
+  "expenses": [
+    {"name": "Employee costs", "amount": 95000.00},
+    {"name": "Depreciation and amortization", "amount": 12000.00},
+    {"name": "Rent and utilities", "amount": 18000.00},
+    {"name": "Professional services", "amount": 8000.00},
+    {"name": "Marketing and advertising", "amount": 15000.00},
+    {"name": "Travel and entertainment", "amount": 4500.00},
+    {"name": "Other operating expenses", "amount": 7500.00}
+  ],
+
+  "financial_income": [
+    {"name": "Interest income", "amount": 1200.00}
+  ],
+
+  "financial_expenses": [
+    {"name": "Interest expense", "amount": 4800.00},
+    {"name": "Bank charges", "amount": 600.00}
+  ],
+
+  "income_tax": [
+    {"name": "Income tax expense", "amount": 0.00}
+  ],
+
+  "_comment_prior": "Optional: include 'prior' with same structure for comparative analysis",
+  "prior": {
+    "start_date": "2025-01-01",
+    "end_date": "2025-03-31",
+    "revenue": [
+      {"name": "Product sales", "amount": 310000.00},
+      {"name": "Service revenue", "amount": 95000.00}
+    ],
+    "other_income": [
+      {"name": "Other operating income", "amount": 3000.00}
+    ],
+    "cogs": [
+      {"name": "Cost of goods sold", "amount": 195000.00}
+    ],
+    "expenses": [
+      {"name": "Employee costs", "amount": 82000.00},
+      {"name": "Depreciation and amortization", "amount": 11000.00},
+      {"name": "Rent and utilities", "amount": 16500.00},
+      {"name": "Professional services", "amount": 6000.00},
+      {"name": "Marketing and advertising", "amount": 10000.00},
+      {"name": "Travel and entertainment", "amount": 3200.00},
+      {"name": "Other operating expenses", "amount": 6800.00}
+    ],
+    "financial_income": [
+      {"name": "Interest income", "amount": 800.00}
+    ],
+    "financial_expenses": [
+      {"name": "Interest expense", "amount": 5200.00},
+      {"name": "Bank charges", "amount": 550.00}
+    ],
+    "income_tax": [
+      {"name": "Income tax expense", "amount": 0.00}
+    ]
+  }
+}
