@@ -34,7 +34,7 @@ Ask the user for:
 
 ## Step 2: Fetch Financial Data
 
-Use MCP tools to gather all required data:
+Use MCP tools to gather all required data. **Prior year comparative data is REQUIRED** — the XBRL file must include both current and prior year figures. The BTM portal displays comparative columns and expects them to be populated.
 
 ```
 # Core financial data — current year
@@ -42,9 +42,10 @@ generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "YYYY-12-
 generate_report("balance_sheet", {"legal_entity_id": ID, "as_of_date": "YYYY-12-31"})
 generate_report("income_statement", {"legal_entity_id": ID, "start_date": "YYYY-01-01", "end_date": "YYYY-12-31"})
 
-# Prior year comparatives — balance sheet AND income statement
+# Prior year comparatives — REQUIRED (balance sheet, income statement, and trial balance for cash flow)
 generate_report("balance_sheet", {"legal_entity_id": ID, "as_of_date": "PRIOR-12-31"})
 generate_report("income_statement", {"legal_entity_id": ID, "start_date": "PRIOR-01-01", "end_date": "PRIOR-12-31"})
+generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "PRIOR-12-31"})
 
 # Note data
 generate_report("ar_aging", {"legal_entity_id": ID, "as_of_date": "YYYY-12-31"})
@@ -53,6 +54,8 @@ list_entities("fixed_asset", {"legal_entity_id": ID})
 list_entities("bank_account", {"legal_entity_id": ID})
 list_entities("employee", {"legal_entity_id": ID})
 ```
+
+**DO NOT skip prior year fetches.** If prior year data is unavailable (e.g., first year of operations), explicitly set all prior year values to 0 in the JSON.
 
 ## Step 3: Determine Required Roles
 
@@ -89,6 +92,9 @@ Full element lists are in **references/xbrl-generation.md** → "Balance Sheet E
 1. `balance_sheet.current.Assets` == `balance_sheet.current.Liabilities` + `balance_sheet.current.Equity`
 2. `income_statement.TotalAnnualPeriodProfitLoss` == `balance_sheet.current.AnnualPeriodProfitLoss`
 3. `cash_flow.CashAndCashEquivalentsAtEndOfPeriod` == `balance_sheet.current.CashAndCashEquivalents`
+4. `balance_sheet.prior` MUST be non-empty (comparative balance sheet is required)
+5. `balance_sheet.prior.Assets` == `balance_sheet.prior.Liabilities` + `balance_sheet.prior.Equity` (prior year must also balance)
+6. `income_statement_prior` MUST be non-empty (comparative income statement is required)
 
 **JSON structure** (see `scripts/input_schema.json` for full example):
 

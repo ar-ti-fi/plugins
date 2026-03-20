@@ -21,7 +21,7 @@ You MUST verify each checkpoint before proceeding to the next step. If a checkpo
 - **CP1**: All 12 fiscal periods for the year must be closed
 - **CP2**: Company size category must be determined (affects which statements are required)
 - **CP3**: Trial balance must balance (total debits = total credits)
-- **CP4**: Prior year comparatives must be fetched and verified
+- **CP4**: Prior year comparatives MUST be fetched and cross-validated against previously filed report
 - **CP5**: Balance sheet must balance (Total Assets = Total Liabilities + Total Equity)
 - **CP6**: Cash flow net change must equal closing cash minus opening cash
 
@@ -42,18 +42,26 @@ Assess audit requirement using thresholds from **references/rtj-standards.md**.
 
 ### Step 2: Fetch Financial Data
 
-Fetch all data needed for the report:
+Fetch all data needed for the report. **Comparative figures (prior year) are REQUIRED** — the XBRL file and all financial statements must include both current and prior year columns. This ensures consistency with the previously filed report and compliance with Estonian accounting standards.
 
-1. **Trial balance** (current + prior year): `generate_report("trial_balance", ...)` — **CP3 checkpoint**: verify it balances
-2. **Balance sheet** (current + prior year): `generate_report("balance_sheet", ...)`
-3. **Income statement** (current + prior year): `generate_report("income_statement", ...)`
-4. **AR aging**: `generate_report("ar_aging", ...)` — for receivables note
-5. **AP aging**: `generate_report("ap_aging", ...)` — for payables note
-6. **Fixed assets**: `list_entities("fixed_asset", ...)` — for PP&E note and depreciation
-7. **Bank accounts**: `list_entities("bank_account", ...)` — for cash note
-8. **Employee list**: already fetched in Step 1
+**Current year data:**
+1. **Trial balance**: `generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "YYYY-12-31"})` — **CP3 checkpoint**: verify it balances
+2. **Balance sheet**: `generate_report("balance_sheet", {"legal_entity_id": ID, "as_of_date": "YYYY-12-31"})`
+3. **Income statement**: `generate_report("income_statement", {"legal_entity_id": ID, "start_date": "YYYY-01-01", "end_date": "YYYY-12-31"})`
 
-**CP4 checkpoint**: Confirm prior year data available and matches previously filed report.
+**Prior year comparative data (REQUIRED):**
+4. **Prior year balance sheet**: `generate_report("balance_sheet", {"legal_entity_id": ID, "as_of_date": "PRIOR-12-31"})`
+5. **Prior year income statement**: `generate_report("income_statement", {"legal_entity_id": ID, "start_date": "PRIOR-01-01", "end_date": "PRIOR-12-31"})`
+6. **Prior year trial balance**: `generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "PRIOR-12-31"})` — for cash flow comparative calculation
+
+**Supporting data:**
+7. **AR aging**: `generate_report("ar_aging", ...)` — for receivables note
+8. **AP aging**: `generate_report("ap_aging", ...)` — for payables note
+9. **Fixed assets**: `list_entities("fixed_asset", ...)` — for PP&E note and depreciation
+10. **Bank accounts**: `list_entities("bank_account", ...)` — for cash note
+11. **Employee list**: already fetched in Step 1
+
+**CP4 checkpoint**: Confirm ALL prior year data is available. Cross-validate prior year figures against the previously filed annual report — the prior year closing balances in this report must match the prior year figures as filed. If discrepancies exist, investigate and resolve before proceeding (e.g., prior year adjustments, reclassifications). This ensures that 2025 entries have been recorded on the same principles and to the same accounts as in the prior year.
 
 ### Step 3: Balance Sheet (Bilanss)
 
@@ -107,7 +115,7 @@ Statutory reserve must reach 10% of share capital; minimum 5% of net profit tran
 
 Generate a comprehensive summary document with:
 - Cover page (company name, registry code, period, board members)
-- All financial statements with current year and prior year columns
+- All financial statements with **current year AND prior year comparative columns** (both columns are mandatory)
 - All notes
 - Management report with KPIs
 - Profit allocation proposal
@@ -115,7 +123,7 @@ Generate a comprehensive summary document with:
 
 ### Step 11: Generate XBRL Files
 
-Generate the XBRL files for upload to ariregister.rik.ee using **references/xbrl-generation.md** as the complete reference.
+Generate the XBRL files for upload to ariregister.rik.ee using **references/xbrl-generation.md** as the complete reference. The XBRL files MUST include prior year comparative data (`balance_sheet.prior`, `income_statement_prior`, `cash_flow_prior`) — the BTM portal displays comparative columns and they are expected.
 
 **CRITICAL before generating — read the "CRITICAL RULES" section at the top of xbrl-generation.md:**
 - Taxonomy namespace is EXACTLY `http://xbrl.eesti.ee/taxonomy/et-gaap_2026-01-01/` (trailing slash required)

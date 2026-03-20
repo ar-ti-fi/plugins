@@ -22,6 +22,8 @@ These rules are absolute. Violating any of them causes portal validation to fail
 
 7. **No zero-value facts** — Omit facts where the value is 0, except for required aggregate totals.
 
+8. **Always include prior year comparatives** — The XBRL file MUST include prior year data using I1 (balance sheet) and D11 (income statement, cash flow) contexts. The BTM portal expects comparative columns. Populate `balance_sheet.prior`, `income_statement_prior`, and `cash_flow_prior` in the input JSON. This ensures consistency between the current and previously filed report.
+
 ## Overview
 
 Two files are generated:
