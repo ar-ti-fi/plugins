@@ -1,0 +1,68 @@
+{
+  "name": "arfiti-plugins",
+  "owner": {
+    "name": "Arfiti Technologies OU",
+    "email": "support@arfiti.com"
+  },
+  "metadata": {
+    "description": "AI-powered finance and accounting plugins for Claude. Reporting, budgeting, cost allocation, and country-specific compliance (Estonia)."
+  },
+  "plugins": [
+    {
+      "name": "arfiti-core-financial-reports",
+      "source": "./arfiti-core-financial-reports",
+      "description": "Financial reporting suite: Balance Sheet, Profit & Loss, Cash Flow, Trial Balance, Aging Analysis, and Dimension Analysis. Works with any chart of accounts.",
+      "version": "1.0.0",
+      "category": "reporting",
+      "keywords": ["financial-reports", "balance-sheet", "income-statement", "cash-flow", "aging"]
+    },
+    {
+      "name": "arfiti-core-budget-planning",
+      "source": "./arfiti-core-budget-planning",
+      "description": "Budget planning: annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting.",
+      "version": "1.0.0",
+      "category": "planning",
+      "keywords": ["budget", "forecast", "variance", "planning"]
+    },
+    {
+      "name": "arfiti-core-cost-allocation",
+      "source": "./arfiti-core-cost-allocation",
+      "description": "Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice).",
+      "version": "2.0.0",
+      "category": "accounting",
+      "keywords": ["cost-allocation", "departments", "projects", "dimensions"]
+    },
+    {
+      "name": "arfiti-ee-annual-report",
+      "source": "./arfiti-ee-annual-report",
+      "description": "Estonian Annual Report (majandusaasta aruanne) preparation for the e-Business Register. Financial statements, notes, management report, and XBRL filing.",
+      "version": "1.0.0",
+      "category": "compliance",
+      "keywords": ["estonia", "annual-report", "xbrl", "ariregister", "majandusaasta-aruanne"]
+    },
+    {
+      "name": "arfiti-ee-payroll-calculator",
+      "source": "./arfiti-ee-payroll-calculator",
+      "description": "Estonian payroll calculator. Income tax, social tax, unemployment insurance, funded pension, and TSD declaration generation for EMTA.",
+      "version": "1.0.0",
+      "category": "compliance",
+      "keywords": ["estonia", "payroll", "tsd", "emta", "social-tax"]
+    },
+    {
+      "name": "arfiti-ee-vat-declaration",
+      "source": "./arfiti-ee-vat-declaration",
+      "description": "Estonian VAT declaration (KMD) preparation for monthly EMTA filing. KMD form, KMD INF annex, and EC Sales List.",
+      "version": "1.0.0",
+      "category": "compliance",
+      "keywords": ["estonia", "vat", "kmd", "emta", "ec-sales-list"]
+    },
+    {
+      "name": "arfiti-ee-year-end-bookkeeping",
+      "source": "./arfiti-ee-year-end-bookkeeping",
+      "description": "Full year-end bookkeeping for Estonian companies. Chart of accounts setup, opening balances, bank statement processing, reconciliation, and period close.",
+      "version": "1.0.0",
+      "category": "compliance",
+      "keywords": ["estonia", "year-end", "bookkeeping", "reconciliation", "period-close"]
+    }
+  ]
+}
