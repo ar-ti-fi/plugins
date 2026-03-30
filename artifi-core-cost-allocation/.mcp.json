@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "artifi": {
+      "type": "url",
+      "url": "https://mcp.artifi.com/mcp"
+    }
+  }
+}
