@@ -1,8 +1,0 @@
-{
-  "name": "arfiti-ee-vat-declaration",
-  "description": "Estonian VAT declaration (KMD) preparation for monthly EMTA filing. Dynamically discovers tax codes and maps them to KMD form lines, prepares KMD INF annex and EC Sales List (Form VD).",
-  "version": "1.0.0",
-  "author": {
-    "name": "Arfiti"
-  }
-}
