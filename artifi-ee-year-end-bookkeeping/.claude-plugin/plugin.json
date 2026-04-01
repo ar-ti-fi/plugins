@@ -1,0 +1,8 @@
+{
+  "name": "artifi-ee-year-end-bookkeeping",
+  "description": "Full year-end bookkeeping for Estonian companies (OU/AS). Guides anyone — business owners, freelancers, accountants — through building a complete year's accounting from scratch: chart of accounts setup, opening balances, bank statement processing, source document posting, reconciliation, and period close. Prepares the entity for annual report filing at ariregister.rik.ee.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Arfiti"
+  }
+}

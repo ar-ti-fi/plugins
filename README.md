@@ -10,17 +10,17 @@ Universal plugins that work with any chart of accounts and any country.
 
 | Plugin | What it does | Commands |
 |--------|-------------|----------|
-| [arfiti-core-financial-reports](./arfiti-core-financial-reports) | Financial reporting suite: Balance Sheet, P&L, Cash Flow, Trial Balance, Aging Analysis, and Dimension Analysis. Discovers account properties dynamically — works with any COA. | `/balance-sheet` `/profit-and-loss` `/cash-flow` `/trial-balance` `/aged-receivables` `/aged-payables` `/dimension-analysis` `/financial-summary` |
-| [arfiti-core-budget-planning](./arfiti-core-budget-planning) | Budget planning: annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting. | `/create-budget` `/forecast-budget` `/preview-budget` `/review-variance` |
-| [arfiti-core-cost-allocation](./arfiti-core-cost-allocation) | Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice with full traceability). | `/run-allocation` `/preview-allocation` |
+| [artifi-core-financial-reports](./artifi-core-financial-reports) | Financial reporting suite: Balance Sheet, P&L, Cash Flow, Trial Balance, Aging Analysis, and Dimension Analysis. Discovers account properties dynamically — works with any COA. | `/balance-sheet` `/profit-and-loss` `/cash-flow` `/trial-balance` `/aged-receivables` `/aged-payables` `/dimension-analysis` `/financial-summary` |
+| [artifi-core-budget-planning](./artifi-core-budget-planning) | Budget planning: annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting. | `/create-budget` `/forecast-budget` `/preview-budget` `/review-variance` |
+| [artifi-core-cost-allocation](./artifi-core-cost-allocation) | Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice with full traceability). | `/run-allocation` `/preview-allocation` |
 
 ### Estonia (EE)
 
 | Plugin | What it does | Commands |
 |--------|-------------|----------|
-| [arfiti-ee-annual-report](./arfiti-ee-annual-report) | Prepares the full annual report (balance sheet, income statement, notes, management report) and generates XBRL for e-Business Register filing. Uses the et-gaap-2026 taxonomy. | `/prepare-annual-report` `/check-prerequisites` `/generate-xbrl-file` |
-| [arfiti-ee-payroll-calculator](./arfiti-ee-payroll-calculator) | Calculates gross-to-net payroll with Estonian tax formulas (social tax, income tax, unemployment insurance, funded pension) and generates TSD declarations for EMTA. | `/calculate-payroll` `/generate-tsd` |
-| [arfiti-ee-vat-declaration](./arfiti-ee-vat-declaration) | Prepares VAT returns (KMD form), KMD INF annexes, and EC Sales Lists. Dynamically discovers tax codes and maps to KMD lines. | `/prepare-vat-declaration` `/validate-vat-return` `/prepare-ec-sales-list` |
+| [artifi-ee-annual-report](./artifi-ee-annual-report) | Prepares the full annual report (balance sheet, income statement, notes, management report) and generates XBRL for e-Business Register filing. Uses the et-gaap-2026 taxonomy. | `/prepare-annual-report` `/check-prerequisites` `/generate-xbrl-file` |
+| [artifi-ee-payroll-calculator](./artifi-ee-payroll-calculator) | Calculates gross-to-net payroll with Estonian tax formulas (social tax, income tax, unemployment insurance, funded pension) and generates TSD declarations for EMTA. | `/calculate-payroll` `/generate-tsd` |
+| [artifi-ee-vat-declaration](./artifi-ee-vat-declaration) | Prepares VAT returns (KMD form), KMD INF annexes, and EC Sales Lists. Dynamically discovers tax codes and maps to KMD lines. | `/prepare-vat-declaration` `/validate-vat-return` `/prepare-ec-sales-list` |
 
 More countries coming soon.
 
