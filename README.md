@@ -1,4 +1,4 @@
-# Artifi Plugins
+# Arfiti Plugins
 
 AI-powered plugins that give finance and accounting teams superpowers inside Claude, Cursor, and other AI tools. Each plugin packages domain knowledge — reporting formats, tax rules, compliance workflows — so your AI assistant handles the details correctly.
 
@@ -10,17 +10,17 @@ Universal plugins that work with any chart of accounts and any country.
 
 | Plugin | What it does | Commands |
 |--------|-------------|----------|
-| [artifi-core-financial-reports](./artifi-core-financial-reports) | Financial reporting suite: Balance Sheet, P&L, Cash Flow, Trial Balance, Aging Analysis, and Dimension Analysis. Discovers account properties dynamically — works with any COA. | `/balance-sheet` `/profit-and-loss` `/cash-flow` `/trial-balance` `/aged-receivables` `/aged-payables` `/dimension-analysis` `/financial-summary` |
-| [artifi-core-budget-planning](./artifi-core-budget-planning) | Budget planning: annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting. | `/create-budget` `/forecast-budget` `/preview-budget` `/review-variance` |
-| [artifi-core-cost-allocation](./artifi-core-cost-allocation) | Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice with full traceability). | `/run-allocation` `/preview-allocation` |
+| [arfiti-core-financial-reports](./arfiti-core-financial-reports) | Financial reporting suite: Balance Sheet, P&L, Cash Flow, Trial Balance, Aging Analysis, and Dimension Analysis. Discovers account properties dynamically — works with any COA. | `/balance-sheet` `/profit-and-loss` `/cash-flow` `/trial-balance` `/aged-receivables` `/aged-payables` `/dimension-analysis` `/financial-summary` |
+| [arfiti-core-budget-planning](./arfiti-core-budget-planning) | Budget planning: annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting. | `/create-budget` `/forecast-budget` `/preview-budget` `/review-variance` |
+| [arfiti-core-cost-allocation](./arfiti-core-cost-allocation) | Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice with full traceability). | `/run-allocation` `/preview-allocation` |
 
 ### Estonia (EE)
 
 | Plugin | What it does | Commands |
 |--------|-------------|----------|
-| [artifi-ee-annual-report](./artifi-ee-annual-report) | Prepares the full annual report (balance sheet, income statement, notes, management report) and generates XBRL for e-Business Register filing. Uses the et-gaap-2026 taxonomy. | `/prepare-annual-report` `/check-prerequisites` `/generate-xbrl-file` |
-| [artifi-ee-payroll-calculator](./artifi-ee-payroll-calculator) | Calculates gross-to-net payroll with Estonian tax formulas (social tax, income tax, unemployment insurance, funded pension) and generates TSD declarations for EMTA. | `/calculate-payroll` `/generate-tsd` |
-| [artifi-ee-vat-declaration](./artifi-ee-vat-declaration) | Prepares VAT returns (KMD form), KMD INF annexes, and EC Sales Lists. Dynamically discovers tax codes and maps to KMD lines. | `/prepare-vat-declaration` `/validate-vat-return` `/prepare-ec-sales-list` |
+| [arfiti-ee-annual-report](./arfiti-ee-annual-report) | Prepares the full annual report (balance sheet, income statement, notes, management report) and generates XBRL for e-Business Register filing. Uses the et-gaap-2026 taxonomy. | `/prepare-annual-report` `/check-prerequisites` `/generate-xbrl-file` |
+| [arfiti-ee-payroll-calculator](./arfiti-ee-payroll-calculator) | Calculates gross-to-net payroll with Estonian tax formulas (social tax, income tax, unemployment insurance, funded pension) and generates TSD declarations for EMTA. | `/calculate-payroll` `/generate-tsd` |
+| [arfiti-ee-vat-declaration](./arfiti-ee-vat-declaration) | Prepares VAT returns (KMD form), KMD INF annexes, and EC Sales Lists. Dynamically discovers tax codes and maps to KMD lines. | `/prepare-vat-declaration` `/validate-vat-return` `/prepare-ec-sales-list` |
 
 More countries coming soon.
 
@@ -38,9 +38,9 @@ Add the plugin directory to your Claude Desktop project or Cursor workspace.
 
 [Download latest ZIP](https://github.com/ar-ti-fi/plugins/archive/refs/heads/main.zip)
 
-### Option 3: Via Artifi admin dashboard
+### Option 3: Via Arfiti admin dashboard
 
-If you use [Artifi](https://artifi.com), plugins are available directly from the admin dashboard under **Administration > Plugins** with one-click download.
+If you use [Arfiti](https://arfiti.com), plugins are available directly from the admin dashboard under **Administration > Plugins** with one-click download.
 
 ## How Plugins Work
 
@@ -49,7 +49,7 @@ Each plugin is a self-contained package that extends your AI assistant with doma
 ```
 plugin-name/
   .claude-plugin/plugin.json    # Plugin manifest (name, version, description)
-  .mcp.json                     # MCP server connection (links to Artifi backend)
+  .mcp.json                     # MCP server connection (links to Arfiti backend)
   commands/                     # Slash commands (e.g. /prepare-annual-report)
   skills/                       # Detailed workflow instructions + reference data
     skill-name/
@@ -78,4 +78,4 @@ See any existing country plugin for the structure. Open an issue or PR to get st
 
 ## License
 
-[MIT](./LICENSE) - Artifi Technologies OU
+[MIT](./LICENSE) - Arfiti Technologies OU

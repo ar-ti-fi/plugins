@@ -1,0 +1,8 @@
+{
+  "name": "arfiti-ee-payroll-calculator",
+  "description": "Estonian payroll calculator. Handles income tax, social tax, unemployment insurance, funded pension calculations, voluntary deductions, and TSD declaration generation for Estonian legal entities.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Arfiti"
+  }
+}

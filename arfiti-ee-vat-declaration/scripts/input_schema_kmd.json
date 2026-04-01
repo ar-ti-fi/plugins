@@ -1,0 +1,82 @@
+{
+  "_comment": "KMD input schema. All monetary values are decimals (EUR). Build this from ERP transaction data for the period.",
+
+  "regcode": "12345678",
+  "vat_number": "EE123456789",
+  "year": 2025,
+  "month": 1,
+
+  "_comment_kmd_lines": "Lines 1-13 of the KMD form. Line 10 = (1.1 + 2.1) - 4 + 8. Lines 12/13 are mutually exclusive.",
+  "kmd_lines": {
+    "line1":   100000.00,
+    "line1_1":  24000.00,
+    "line2":     5000.00,
+    "line2_1":    650.00,
+    "line3":    10000.00,
+    "line3_1":  15000.00,
+    "line3_2":   8500.00,
+    "line4":    18000.00,
+    "line4_1":   5000.00,
+    "line5":        0.00,
+    "line5_1":      0.00,
+    "line6":        0.00,
+    "line7":        0.00,
+    "line8":        0.00,
+    "line10":    6650.00,
+    "line11":       0.00,
+    "line12":    6650.00,
+    "line13":       0.00
+  },
+
+  "_comment_kmd_inf": "Partners > EUR 1,000. Part A = sales (AR invoices). Part B = purchases (AP invoices).",
+  "kmd_inf": {
+    "part_a": [
+      {
+        "reg_code": "87654321",
+        "name": "Customer OÜ",
+        "invoice_count": 5,
+        "taxable_amount": 5000.00,
+        "vat_amount": 1200.00
+      },
+      {
+        "reg_code": "11223355",
+        "name": "Another Client AS",
+        "invoice_count": 2,
+        "taxable_amount": 8000.00,
+        "vat_amount": 1920.00
+      }
+    ],
+    "part_b": [
+      {
+        "reg_code": "11223344",
+        "name": "Vendor AS",
+        "invoice_count": 3,
+        "taxable_amount": 3000.00,
+        "vat_amount": 720.00
+      },
+      {
+        "reg_code": "99887766",
+        "name": "Supplier OÜ",
+        "invoice_count": 8,
+        "taxable_amount": 12500.00,
+        "vat_amount": 3000.00
+      }
+    ]
+  },
+
+  "_comment_vd_entries": "EC Sales List entries. Only include if intra-community supplies exist. Must reconcile: goods (G+T) total = kmd_lines.line3_1, services (S) total = kmd_lines.line3_2. Omit this key entirely if no IC supplies.",
+  "vd_entries": [
+    {
+      "customer_vat_number": "FI12345678",
+      "country_code": "FI",
+      "supply_type": "G",
+      "amount": 15000.00
+    },
+    {
+      "customer_vat_number": "DE987654321",
+      "country_code": "DE",
+      "supply_type": "S",
+      "amount": 8500.00
+    }
+  ]
+}
