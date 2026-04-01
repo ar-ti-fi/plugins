@@ -1,8 +1,0 @@
-{
-  "name": "artifi-core-cost-allocation",
-  "description": "Cost allocation plugin. Guides users through allocating costs across departments, projects, or dimensions. Two modes: standalone (from GL balances) and document-linked (from a specific bill/invoice with full traceability). Reads GL data, calculates splits, validates source document integrity, prevents double-allocation, and submits allocation runs to the ERP.",
-  "version": "2.0.0",
-  "author": {
-    "name": "Artifi"
-  }
-}
