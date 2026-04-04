@@ -40,7 +40,7 @@ Add the plugin directory to your Claude Desktop project or Cursor workspace.
 
 ### Option 3: Via Arfiti admin dashboard
 
-If you use [Arfiti](https://arfiti.com), plugins are available directly from the admin dashboard under **Administration > Plugins** with one-click download.
+If you use [Arfiti](https://ar-ti-fi.com), plugins are available directly from the admin dashboard under **Administration > Plugins** with one-click download.
 
 ## How Plugins Work
 
