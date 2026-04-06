@@ -63,6 +63,14 @@
       "version": "1.0.0",
       "category": "compliance",
       "keywords": ["estonia", "year-end", "bookkeeping", "reconciliation", "period-close"]
+    },
+    {
+      "name": "artifi-core-implementation-consultant",
+      "source": "./artifi-core-implementation-consultant",
+      "description": "ERP implementation consultant. Guides customers through migration: chart of accounts, opening balances with open transactions, master data import, gap period transaction processing, and go-live verification.",
+      "version": "1.0.0",
+      "category": "accounting",
+      "keywords": ["migration", "onboarding", "implementation", "opening-balance", "data-import", "go-live"]
     }
   ]
 }

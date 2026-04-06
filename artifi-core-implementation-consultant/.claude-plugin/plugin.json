@@ -1,0 +1,8 @@
+{
+  "name": "artifi-core-implementation-consultant",
+  "description": "Implementation consultant for ERP migration. Guides customers through chart of accounts setup, opening balances with open transactions, master data import, gap period transaction processing, and go-live verification. Acts as a knowledgeable migration partner that detects what data is needed from the balance sheet and advises on the best migration strategy.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Arfiti"
+  }
+}
