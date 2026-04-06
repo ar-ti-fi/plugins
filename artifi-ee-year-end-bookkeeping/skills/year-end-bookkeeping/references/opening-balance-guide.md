@@ -97,6 +97,86 @@ The `balancing_account_number` (typically 3300 = Current Year Result or 3200 = R
 
 If the balancing amount is large (more than EUR 1), something is wrong — review the data.
 
+## Subledger Details (Open AP, Open AR, Fixed Assets)
+
+### What Are Subledger Details and Why They Matter
+
+When the balance sheet shows "Accounts Receivable: 25,000 EUR", that is the total. But that total is made up of individual unpaid customer invoices — for example, Invoice #001 for 10,000 from Customer A and Invoice #002 for 15,000 from Customer B. The same applies to accounts payable (individual unpaid vendor bills) and fixed assets (individual assets with their own depreciation schedules).
+
+Without these details, the GL balance is correct, but:
+- **AR aging reports** show one lump sum instead of individual invoices with due dates
+- **AP aging reports** cannot show which bills are overdue or coming due
+- **Fixed asset register** is empty, so automatic depreciation cannot run
+- **Collections and payment scheduling** have no individual items to track
+
+With the details, the system creates proper subledger records: each open invoice becomes an AR transaction, each unpaid bill becomes an AP transaction, and each asset gets its own depreciation schedule.
+
+### How It Works: The Clearing Account Approach
+
+When subledger details are provided, the system uses a migration clearing account (account 0000 or a designated clearing account) to keep the GL balanced:
+
+1. The **opening balance entry** posts the clearing account instead of the AR/AP control account. For example, instead of debiting "1200 Accounts Receivable" for 25,000, it debits "0000 Migration Clearing" for 25,000.
+2. Each **open AR invoice** is posted as a proper AR_INVOICE transaction: debit 1200 Accounts Receivable, credit 0000 Migration Clearing.
+3. The clearing account nets to zero (25,000 debit from opening entry, 25,000 credit from the individual invoices).
+
+The same approach applies to AP and fixed assets. The end result: the GL balances are identical, but the subledger now has individual trackable items.
+
+### What to Provide for Each Category
+
+**Open AR (unpaid customer invoices):**
+- Customer name
+- Invoice number
+- Amount (outstanding balance)
+- Invoice date
+- Due date
+
+**Open AP (unpaid vendor bills):**
+- Vendor name
+- Bill number
+- Amount (outstanding balance)
+- Bill date
+- Due date
+
+**Fixed assets:**
+- Asset name/description
+- Acquisition date
+- Original cost
+- Accumulated depreciation to date
+- Estimated useful life (in months or years)
+
+### Example Format
+
+**Open AR items:**
+
+| Customer | Invoice # | Amount | Invoice Date | Due Date |
+|----------|-----------|--------|--------------|----------|
+| Acme OÜ | INV-2024-089 | 10,000.00 | 2024-10-15 | 2024-11-15 |
+| Baltic Tech AS | INV-2024-102 | 15,000.00 | 2024-11-20 | 2024-12-20 |
+| **Total** | | **25,000.00** | | |
+
+**Open AP items:**
+
+| Vendor | Bill # | Amount | Bill Date | Due Date |
+|--------|--------|--------|-----------|----------|
+| Office Supplies OÜ | BILL-4521 | 3,200.00 | 2024-11-01 | 2024-12-01 |
+| Cloud Hosting AS | BILL-8834 | 1,800.00 | 2024-12-01 | 2025-01-01 |
+| **Total** | | **5,000.00** | | |
+
+**Fixed assets:**
+
+| Asset | Acquisition Date | Original Cost | Accum. Depreciation | Useful Life |
+|-------|-----------------|---------------|---------------------|-------------|
+| MacBook Pro (x3) | 2023-03-15 | 6,000.00 | 2,000.00 | 36 months |
+| Office Furniture | 2022-06-01 | 4,000.00 | 1,600.00 | 60 months |
+| Server Equipment | 2024-01-10 | 15,000.00 | 6,400.00 | 48 months |
+| **Total** | | **25,000.00** | **10,000.00** | |
+
+The totals must match the corresponding balance sheet lines (AR total = receivable balance, AP total = payable balance, asset cost total = fixed asset account, depreciation total = accumulated depreciation account).
+
+### If You Don't Have the Details
+
+It is OK to proceed without subledger details. The GL balances will be correct and the trial balance will match the prior year balance sheet. You can add individual items later by manually creating invoices, bills, or fixed asset records. But it is better to do it during migration if you have the data — retrofitting later requires more work.
+
 ## Common Pitfalls
 
 1. **Forgetting accumulated depreciation**: Fixed assets are recorded at cost (debit 1500), but accumulated depreciation is a separate credit entry (credit 1600). The net book value = 1500 - 1600.

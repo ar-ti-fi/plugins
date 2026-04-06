@@ -123,11 +123,56 @@ Explain: "Opening balances are the starting point — they tell us how much was 
 2. Read the document and extract each line item with its balance
 3. Map each line to an account in the imported CoA
 4. If any lines don't match: flag them and ask the user to clarify which account they belong to
-5. Upload: `manage_imports(action="opening_balances", legal_entity_id=ENTITY_ID, balances=[{"account_number": "1000", "debit": 50000, "credit": 0}, ...], fiscal_period_name="YYYY-01", balancing_account_number="3300")`
+5. **Before uploading**, detect subledger accounts (see Step 5b below) and collect details if available
+6. Upload using the appropriate method (see Step 5b for details)
    - Explain: "The balancing account (3300 = Retained Earnings) absorbs any small rounding differences to keep the books balanced."
-6. See **references/opening-balance-guide.md** for common pitfalls
+7. See **references/opening-balance-guide.md** for common pitfalls and subledger details
 
 **CP4 checkpoint**: Trial balance from `generate_report("trial_balance", {"legal_entity_id": ENTITY_ID, "as_of_date": "YYYY-01-01"})` shows total debits = total credits.
+
+### Step 5b: Detect Subledger Accounts
+
+After mapping (step 5.4) but BEFORE uploading, analyze the balance sheet for accounts that have subledger significance. ALWAYS ask the user for details when any of these are detected — do not skip this step.
+
+**Detection rules:**
+- **Accounts Receivable**: accounts in the 1200-range, or with names containing "receivable", "ostja", "trade debtor"
+- **Accounts Payable**: accounts in the 2110-range, or with names containing "payable", "tarnija", "trade creditor"
+- **Fixed Assets**: accounts in 1500-1599 (cost) with corresponding 1600-1699 (accumulated depreciation)
+
+**For each detected category, explain the tradeoff and ask:**
+
+- **AR**: "I see accounts receivable of EUR X. For aging reports and collections tracking to work properly, I need the list of unpaid customer invoices that make up this balance. For each invoice, please provide: customer name, invoice number, amount, invoice date, and due date. If you don't have this breakdown, I'll record the total as a lump sum — the GL balance will be correct but aging reports won't show individual invoices."
+- **AP**: "I see accounts payable of EUR X. For aging reports and payment scheduling to work, I need the list of unpaid vendor bills. For each bill: vendor name, bill number, amount, bill date, and due date."
+- **FA**: "I see fixed assets of EUR X with accumulated depreciation of EUR Y. For the asset register and automatic depreciation calculations to work, I need a list of your assets. For each asset: description/name, acquisition date, original cost, accumulated depreciation to date, and estimated useful life (in months or years)."
+
+**When subledger details are provided:**
+
+Upload using the extended import that creates individual subledger records:
+```
+manage_imports(
+    action="opening_balances_with_subledger",
+    legal_entity_id=ENTITY_ID,
+    balances=[...],
+    fiscal_period_name="YYYY-01",
+    balancing_account_number="3300",
+    open_ar_items=[
+        {"customer_name": "Customer A", "reference_number": "INV-001", "amount": 10000, "invoice_date": "2024-06-15", "due_date": "2024-07-15"},
+        ...
+    ],
+    open_ap_items=[
+        {"vendor_name": "Vendor B", "reference_number": "BILL-042", "amount": 5000, "invoice_date": "2024-11-01", "due_date": "2024-12-01"},
+        ...
+    ],
+    fixed_assets_detail=[
+        {"name": "Office Laptop", "acquisition_date": "2023-03-01", "original_cost": 1500, "accumulated_depreciation": 500, "useful_life_months": 36},
+        ...
+    ]
+)
+```
+
+**When no details provided:** Fall back to the regular `manage_imports(action="opening_balances", ...)` already posted in Step 5. The GL balances will be correct but subledger features (aging, depreciation schedules) will be limited.
+
+**CP4b checkpoint**: Subledger records verified — individual AR invoices/AP bills created (if details provided), fixed asset register populated (if details provided).
 
 ### Step 6: Verify Opening Balance
 
