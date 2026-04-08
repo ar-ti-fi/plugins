@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "arfiti": {
+      "type": "url",
+      "url": "https://mcp.ar-ti-fi.com/mcp"
+    }
+  }
+}

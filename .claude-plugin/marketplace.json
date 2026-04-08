@@ -71,6 +71,14 @@
       "version": "1.0.0",
       "category": "accounting",
       "keywords": ["migration", "onboarding", "implementation", "opening-balance", "data-import", "go-live"]
+    },
+    {
+      "name": "artifi-core-reconciliation",
+      "source": "./artifi-core-reconciliation",
+      "description": "Payment-to-invoice reconciliation. Automated 6-pass matching via reconciliation agent, then guided manual matching for complex cases: N:N splits, partial payments, rounding write-offs. Supports AR and AP.",
+      "version": "1.0.0",
+      "category": "accounting",
+      "keywords": ["reconciliation", "payment-matching", "cash-application", "AR", "AP", "invoices"]
     }
   ]
 }
