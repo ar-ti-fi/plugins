@@ -114,15 +114,90 @@ The script will:
 find ~ -name "generate_kmd.py" -path "*/artifi-ee-vat-declaration/*" 2>/dev/null
 ```
 
-## Step 10: Report Results
+## Step 10: Submit Tax Return to ERP
 
-After the script completes, report to the user:
+Store the KMD calculation results in the ERP. Use the same JSON data from Step 8, structured as `return_data`:
+
+```
+submit("tax_return", "create", {
+    "legal_entity_id": <entity_id>,
+    "reporting_period_id": <period_id>,
+    "tax_authority_id": <EMTA authority id>,
+    "return_type": "vat_return",
+    "return_data": {
+        "form_code": "KMD",
+        "year": <YYYY>, "month": <MM>,
+        "regcode": "<REGCODE>",
+        "kmd_lines": { ... },            // Same data used for generate_kmd.py
+        "kmd_inf": { "part_a": [...], "part_b": [...] },
+        "vd_entries": [...],
+        "sales_summary": { ... },
+        "purchases_summary": { ... },
+        "vat_calculation": {
+            "total_output_vat": <Line 1.1 + Line 2.1>,
+            "total_input_vat": <Line 4>,
+            "net_vat_due": <Line 12 or negative of Line 13>
+        },
+        "validation_results": { "cp1": true, "cp2": true, "cp3": true, "cp4": true, "cp5": true },
+        "filing_instructions": {
+            "form": "KMD + KMD INF + Form VD",
+            "filing_method": "e-MTA XML upload",
+            "portal_url": "https://maasikas.emta.ee",
+            "due_date": "<YYYY-MM-20>"
+        }
+    }
+})
+```
+
+Report the `tax_return_id` to the user. The return is now viewable at Admin Dashboard → Tax → Returns.
+
+## Step 11: Post VAT Closing Journal Entry
+
+Post a journal entry to reclassify VAT accounts. VAT Output/Input are already posted per-transaction — this entry moves the net balance to a VAT Payable (or Receivable) account.
+
+**If Line 12 > 0 (net VAT payable):**
+```
+submit("transaction", "post", {
+    "transaction_type_code": "GL_JOURNAL",
+    "legal_entity_id": <entity_id>,
+    "description": "VAT closing - KMD <YYYY>/<MM>",
+    "transaction_date": "<last day of reporting period>",
+    "lines": [
+        { "account_number": "<VAT Output>", "debit": <Line 1.1 + Line 2.1>, "credit": 0 },
+        { "account_number": "<VAT Input>", "debit": 0, "credit": <Line 4> },
+        { "account_number": "<VAT Payable>", "debit": 0, "credit": <Line 12> }
+    ]
+})
+```
+
+**If Line 13 > 0 (VAT overpaid):**
+```
+submit("transaction", "post", {
+    "transaction_type_code": "GL_JOURNAL",
+    "legal_entity_id": <entity_id>,
+    "description": "VAT closing - KMD <YYYY>/<MM> (overpaid)",
+    "transaction_date": "<last day of reporting period>",
+    "lines": [
+        { "account_number": "<VAT Output>", "debit": <Line 1.1 + Line 2.1>, "credit": 0 },
+        { "account_number": "<VAT Receivable>", "debit": <Line 13>, "credit": 0 },
+        { "account_number": "<VAT Input>", "debit": 0, "credit": <Line 4> }
+    ]
+})
+```
+
+Report: "VAT closing journal entry posted. Net VAT {payable/overpaid}: EUR {amount}."
+
+## Step 12: Report Results
+
+After all steps complete, report to the user:
 - Paths of all generated XML files
 - KMD summary (output VAT, input VAT, net VAT, payable/overpaid)
+- Tax return ID (from Step 10) with link to Admin Dashboard
+- Journal entry posted (from Step 11)
 - Any validation errors printed by the script
 - Confirmation that files are ready for upload
 
-## Step 11: Filing Instructions
+## Step 13: Filing Instructions
 
 1. Log in to **e-MTA** at maasikas.emta.ee with ID-card or Smart-ID
 2. Navigate to **Declarations** → **KMD** → Create new for the period
@@ -133,9 +208,23 @@ After the script completes, report to the user:
 7. Sign digitally and submit
 8. **Deadline**: 20th of the following month
 
+After filing, mark the return as filed:
+```
+submit("tax_return", "file", {
+    "return_id": <tax_return_id from Step 10>,
+    "confirmation_number": "<confirmation from e-MTA>"
+})
+```
+
+> **Payment note:** Check your e-MTA prepayment account (ettemaksukonto) balance before paying. If payroll taxes or other obligations already created a positive balance, the actual bank transfer may be lower than KMD Line 12. Make a bank transfer to EMTA — the bank statement reconciliation will clear the VAT Payable account.
+
 ## Output
 
 Up to three XML files ready for upload:
 - `KMD_YYYYMM_{REGCODE}.xml` — Main VAT declaration form (Lines 1-13)
 - `KMDINF_YYYYMM_{REGCODE}.xml` — KMD INF annex (Parts A & B, partners > EUR 1,000)
 - `VD_YYYYMM_{REGCODE}.xml` — EC Sales List / Form VD (only if IC supplies exist)
+
+Plus ERP records:
+- Tax return (draft) viewable at Admin Dashboard → Tax → Returns
+- VAT closing journal entry posted to GL

@@ -171,7 +171,103 @@ generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-
 
 If there are differences, identify the cause (timing, manual entries, rounding) and present to the user.
 
-### Step 8: Generate Output
+### Step 8: Submit Tax Return to ERP
+
+Store the KMD calculation results in the ERP so they are viewable in Admin Dashboard → Tax → Returns and XML can be regenerated on demand:
+
+```
+submit("tax_return", "create", {
+    "legal_entity_id": <entity_id>,
+    "reporting_period_id": <period_id>,
+    "tax_authority_id": <EMTA authority id>,
+    "return_type": "vat_return",
+    "return_data": {
+        "form_code": "KMD",
+        "year": <YYYY>,
+        "month": <MM>,
+        "regcode": "<business registry code>",
+        "kmd_lines": {
+            "line_1": <Line 1>, "line_1_1": <Line 1.1>,
+            "line_2": <Line 2>, "line_2_1": <Line 2.1>,
+            "line_3": <Line 3>, "line_3_1": <Line 3.1>, "line_3_2": <Line 3.2>,
+            "line_4": <Line 4>, "line_4_1": <Line 4.1>,
+            "line_5": <Line 5>, "line_5_1": <Line 5.1>,
+            "line_6": <Line 6>, "line_7": <Line 7>, "line_8": <Line 8>,
+            "line_10": <Line 10>, "line_11": <Line 11>,
+            "line_12": <Line 12>, "line_13": <Line 13>
+        },
+        "kmd_inf": {
+            "part_a": [{"reg_code": "...", "name": "...", "invoices": <amount>, "vat": <amount>}, ...],
+            "part_b": [{"reg_code": "...", "name": "...", "invoices": <amount>, "vat": <amount>}, ...]
+        },
+        "vd_entries": [{"vat_number": "...", "name": "...", "goods": <amount>, "services": <amount>, "triangular": <amount>}, ...],
+        "sales_summary": {
+            "standard_rate": {"rate": 24, "net_sales": <amount>, "vat_amount": <amount>},
+            "reduced_rate": {"rate": 13, "net_sales": <amount>, "vat_amount": <amount>},
+            "zero_rated": {"rate": 0, "net_sales": <amount>, "vat_amount": 0},
+            "exempt": {"net_sales": <amount>, "vat_amount": 0}
+        },
+        "purchases_summary": {"total_purchases": <amount>, "input_vat_recoverable": <amount>},
+        "vat_calculation": {
+            "total_output_vat": <Line 1.1 + Line 2.1>,
+            "total_input_vat": <Line 4>,
+            "net_vat_due": <Line 12 or negative of Line 13>
+        },
+        "reverse_charge_transactions": {"count": <n>, "total_value": <amount>, "vat_self_assessed": <amount>},
+        "validation_results": {"cp1": true, "cp2": true, "cp3": true, "cp4": true, "cp5": true},
+        "filing_instructions": {
+            "form": "KMD + KMD INF + Form VD",
+            "filing_method": "e-MTA XML upload",
+            "portal_url": "https://maasikas.emta.ee",
+            "due_date": "<YYYY-MM-20 of following month>",
+            "payment_due": "<YYYY-MM-20 of following month>"
+        }
+    },
+    "notes": "<Month Year> KMD - auto-calculated"
+})
+```
+
+Tell the user: "Tax return saved (ID: {tax_return_id}). You can view it at Admin Dashboard → Tax → Returns."
+
+### Step 9: Post VAT Closing Journal Entry
+
+Post a journal entry to reclassify VAT accounts for the period. VAT Output/Input are already posted per-transaction — this entry moves the net balance to a VAT Payable (or Receivable) account.
+
+**If Line 12 > 0 (net VAT payable):**
+```
+submit("transaction", "post", {
+    "transaction_type_code": "GL_JOURNAL",
+    "legal_entity_id": <entity_id>,
+    "description": "VAT closing - KMD <YYYY>/<MM>",
+    "transaction_date": "<last day of reporting period>",
+    "lines": [
+        { "account_number": "<VAT Output account>", "debit": <Line 1.1 + Line 2.1>, "credit": 0 },
+        { "account_number": "<VAT Input account>", "debit": 0, "credit": <Line 4> },
+        { "account_number": "<VAT Payable account>", "debit": 0, "credit": <Line 12> }
+    ]
+})
+```
+
+**If Line 13 > 0 (VAT overpaid/refundable):**
+```
+submit("transaction", "post", {
+    "transaction_type_code": "GL_JOURNAL",
+    "legal_entity_id": <entity_id>,
+    "description": "VAT closing - KMD <YYYY>/<MM> (overpaid)",
+    "transaction_date": "<last day of reporting period>",
+    "lines": [
+        { "account_number": "<VAT Output account>", "debit": <Line 1.1 + Line 2.1>, "credit": 0 },
+        { "account_number": "<VAT Receivable account>", "debit": <Line 13>, "credit": 0 },
+        { "account_number": "<VAT Input account>", "debit": 0, "credit": <Line 4> }
+    ]
+})
+```
+
+Tell the user: "VAT closing journal entry posted. Net VAT {payable/overpaid}: EUR {amount}."
+
+> **Note:** Determine the correct VAT Output, Input, Payable, and Receivable account numbers by querying the entity's chart of accounts. Look for accounts with `account_subtype` matching `vat_output`, `vat_input`, or similar naming conventions.
+
+### Step 10: Generate Output
 
 Compile the final declaration package:
 
@@ -184,8 +280,18 @@ Compile the final declaration package:
 Provide filing guidance from **references/emta-filing-guide.md**:
 - Deadline: 20th of the following month
 - Portal: e-MTA (maasikas.emta.ee)
-- XML format available for upload
+- XML format available for upload (downloadable from Admin Dashboard → Tax → Returns → [this return])
 - Digital signature required
+
+After the user files with EMTA and receives confirmation, mark the return as filed:
+```
+submit("tax_return", "file", {
+    "return_id": <tax_return_id from Step 8>,
+    "confirmation_number": "<confirmation from e-MTA>"
+})
+```
+
+> **Payment note:** Check your e-MTA prepayment account (ettemaksukonto) balance before paying. If payroll taxes or other obligations already created a positive balance, the actual payment may be lower than KMD Line 12. Make a bank transfer to EMTA — the bank statement reconciliation will clear the VAT Payable account.
 
 ## Output Format
 
@@ -195,4 +301,5 @@ Present the final output as a structured document with clear sections:
 - EC Sales List table (if applicable)
 - Reconciliation summary
 - Validation checklist (pass/fail for each check)
+- Tax return ID and link to Admin Dashboard
 - Filing instructions and deadline reminder
