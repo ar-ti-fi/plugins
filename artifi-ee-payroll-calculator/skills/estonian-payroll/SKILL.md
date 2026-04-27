@@ -111,6 +111,10 @@ Build `tax_lines` array per employee with entries for each tax/deduction. See **
 
 ### Step 5: Submit Calculation
 
+> **Tip**: run `get_workflow_schema('payroll_run', 'submit_calculation')` first to confirm the live contract before building the payload.
+>
+> **Critical**: the validator buckets `tax_lines` by `category`, NOT by `side`. Each line's `category` MUST be exactly `'employee_deduction'` (employee-withheld) or `'employer_tax'` (employer-paid). The `side` field (`'CR'` | `'BOTH'`) only drives GL posting and is not read for validation. Field names like `is_employee`, `employee_amount`, etc. are ignored.
+
 Build the payload per **references/submission-format.md** and submit:
 
 ```python
@@ -121,22 +125,32 @@ submit(
         "payroll_run_id": <run_id>,
         "employees": [
             {
-                "employee_id": emp_id,
-                "gross_pay": gross,
-                "regular_pay": gross,
-                "total_employee_taxes": total_ee_taxes,
-                "total_employer_taxes": total_er_taxes,
-                "total_deductions": total_deductions,
-                "net_pay": net,
-                "tax_lines": [...],
-                "deduction_details": [...],
+                "employee_id": 50,
+                "gross_pay": "3500.00",
+                "regular_pay": "3500.00",
+                "total_employee_taxes": "714.28",
+                "total_employer_taxes": "1183.00",
+                "total_deductions": "0.00",
+                "net_pay": "2785.72",
+                "tax_lines": [
+                    {"line_type": "income_tax", "category": "employee_deduction", "amount": "588.28", "side": "CR", "description": "Income tax 22%"},
+                    {"line_type": "unemployment_employee", "category": "employee_deduction", "amount": "56.00", "side": "CR", "description": "Unemployment (employee) 1.6%"},
+                    {"line_type": "pension", "category": "employee_deduction", "amount": "70.00", "side": "CR", "description": "Funded pension II pillar 2%"},
+                    {"line_type": "social_tax", "category": "employer_tax", "amount": "1155.00", "side": "BOTH", "description": "Social tax 33%"},
+                    {"line_type": "unemployment_employer", "category": "employer_tax", "amount": "28.00", "side": "BOTH", "description": "Unemployment (employer) 0.8%"}
+                ],
                 "metadata": {"country": "EE", "basic_exemption_applied": true}
             }
-            for each employee
+            # ... one entry per employee
         ]
     })
 )
 ```
+
+The validator enforces three sums per employee (all ±0.02):
+- `net_pay == gross_pay - total_employee_taxes - total_deductions`
+- `Σ tax_lines[i].amount where category == 'employee_deduction' == total_employee_taxes`
+- `Σ tax_lines[i].amount where category == 'employer_tax' == total_employer_taxes`
 
 **CP6 checkpoint**: Submission succeeds without validation errors.
 
