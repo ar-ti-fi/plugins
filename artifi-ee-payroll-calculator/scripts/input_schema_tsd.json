@@ -1,56 +1,99 @@
 {
-  "_comment": "TSD input schema. All monetary values are decimals (EUR). Pass pre-calculated values fetched from the ERP payroll run.",
+  "_comment": "Input JSON shape for scripts/generate_tsd.py. v1 covers Annex 1 (resident natural persons + board fees). All monetary values are decimals (EUR). Generator computes header c110-c119 and Annex 1 c1200-c1250 roll-ups when not pre-supplied.",
 
   "regcode": "12345678",
   "year": 2026,
-  "month": 1,
+  "month": 4,
+  "load_mode": "P",
+  "_comment_load_mode": "P = amend existing in-progress declaration (default; safest for repeated submissions). L = new declaration; cancels any existing in-progress draft for the same period.",
 
-  "employees": [
+  "_comment_amend_fields": "Optional — set only when refiling a previously-accepted return. Codes (c121_ParPohjusKood): VMA/VET/VDV/VVK/TTM/MTR/DAM/DVK/VPV/AML/MUU. See references/tsd-codes.md.",
+  "amend_reason_code": null,
+  "amend_reason_text": null,
+
+  "_comment_header_overrides": "Optional explicit header values; if present, override the generator's computed roll-ups. Use sparingly (e.g. for amended returns where prior-period adjustments shift c118_KohustKokku).",
+  "header_overrides": {},
+
+  "persons": [
     {
-      "_comment_employee": "Per-employee payroll data. Fetch from payroll_run_details and payroll_run_detail_lines.",
+      "_comment": "One row per person — resident natural persons (Annex 1A). Use payments[] to capture all payments to this person in the period; the generator emits one <tsd_L1_A_Vm> per element.",
+      "personal_id": "38704290190",
+      "full_name": "ANDRII RUDCHUK",
+      "payments": [
+        {
+          "_comment_payment": "Single payment row. payment_type_code is the c1020_ValiKood lookup (10=salary, 11=vacation, 12=sick, 13=contractor, 21=board fee, 27=fringe benefit, ...). See references/tsd-codes.md.",
 
-      "personal_id": "39001011234",
-      "first_name": "Jaan",
-      "last_name": "Tamm",
+          "payment_type_code": "21",
+          "gross": 1500.00,
+          "social_tax_base": 1500.00,
+          "social_tax": 495.00,
+          "combined_kp": 30.00,
+          "_comment_combined_kp": "c1110_Kp = pension (II pillar) + employee unemployment insurance combined. e-MTA reports them as one number.",
+          "unemployment_base": 0.00,
+          "unemployment_employee": 0.00,
+          "unemployment_employer": 0.00,
+          "income_tax": 169.40,
+          "tax_free_items": [
+            {
+              "_comment_tax_free": "c1150_TuliKood codes: 610=basic exemption, 620=mandatory pension contribution deducted, 630=employee unemployment deducted. See references/tsd-codes.md.",
+              "code": "610",
+              "amount": 700.00
+            }
+          ],
 
-      "gross_pay": 3500.00,
-
-      "basic_exemption_applied": true,
-      "basic_exemption_amount": 700.00,
-      "taxable_amount": 2674.00,
-
-      "income_tax": 588.28,
-      "unemployment_employee": 56.00,
-      "funded_pension": 70.00,
-
-      "social_tax": 1155.00,
-      "unemployment_employer": 28.00,
-
-      "total_deductions": 0.00,
-      "net_pay": 2785.72
-    },
-    {
-      "_comment_employee2": "Example with voluntary deductions (III pillar pre-tax, court order post-tax).",
-
-      "personal_id": "49501052345",
-      "first_name": "Mari",
-      "last_name": "Mets",
-
-      "gross_pay": 4200.00,
-
-      "basic_exemption_applied": true,
-      "basic_exemption_amount": 700.00,
-      "taxable_amount": 3035.20,
-
-      "income_tax": 667.74,
-      "unemployment_employee": 67.20,
-      "funded_pension": 84.00,
-
-      "social_tax": 1386.00,
-      "unemployment_employer": 33.60,
-
-      "total_deductions": 200.00,
-      "net_pay": 3181.06
+          "_comment_optional_special_fields": "Below fields are optional and rarely needed. Pension-incapacity adjustments and minimum-tax-base nudges only apply for specific edge cases.",
+          "a1_certificate_country": null,
+          "incapacity_pension_deducted": null,
+          "monthly_rate_already_taxed": null,
+          "minimum_obligation_increase": null
+        }
+      ]
     }
-  ]
+  ],
+
+  "_comment_non_resident_persons": "Optional. Same shape as 'persons' but for Annex 2 (tsd_L2_0 — non-resident natural persons + non-resident companies). Required per-payment fields: country_of_residence (c2020_RiikKood, ISO-3166-1 alpha-2), payment_type_code (c2030_ValiKood — see references/tsd-codes.md), gross. Optional: a1_certificate_country, social_tax_base, social_tax, unemployment_*, income_tax_base, income_tax_rate (10/22/0 etc.), income_tax. Validation is looser than Annex 1 because tax-treaty rates vary; caller is responsible for the math. Routing: split your persons[] from the ERP into resident → 'persons', non_resident → 'non_resident_persons' based on master_employees.metadata.tax_filing.residency.",
+  "non_resident_persons": [],
+
+  "_comment_annex_4": "Optional. Fringe benefits (Annex 4 / tsd_L4_0). Each key maps to a c4xxx element. Omit the whole block to skip Annex 4. Generator emits only the keys you provide. The caller is responsible for computing tax fields (special_income_tax, social_tax, social_tax_base) — typical formula is special_income_tax = grossed_up_value × 22/78, social_tax = (grossed_up_value + special_income_tax) × 33%. See references/tsd-codes.md.",
+  "annex_4": {
+    "company_vehicle": 0.00,
+    "_comment_company_vehicle": "c4040_Ts — value of company-vehicle non-business use",
+    "representation_amount": 0.00,
+    "_comment_representation_amount": "c4140_EsSumma — total taxable representation/fringe amount",
+    "exempt_income_tax": 0.00,
+    "exempt_social_tax": 0.00,
+    "special_income_tax": 0.00,
+    "_comment_special_income_tax": "c4170_TmEj — gross-up income tax on Annex 4 (= taxable × 22/78). Rolls into header c114_TmEj.",
+    "social_tax": 0.00,
+    "_comment_social_tax": "c4180_Sm — social tax on Annex 4 (= (taxable + special_income_tax) × 33%). Rolls into header c115_Sm.",
+    "social_tax_base": 0.00
+  },
+
+  "_comment_annex_5": "Optional. Gifts/donations/entertainment (Annex 5 / tsd_L5_0). general_gifts (c5000) covers gifts NOT to the listed-charity register. listed_charity_month (c5010) covers § 11(1) recipients. entertainment_month (c5100) covers business entertainment. Tax fields are caller-computed. See references/tsd-codes.md.",
+  "annex_5": {
+    "general_gifts": 0.00,
+    "listed_charity_month": 0.00,
+    "listed_charity_year": 0.00,
+    "entertainment_month": 0.00,
+    "entertainment_year": 0.00,
+    "entertainment_threshold": 0.00,
+    "special_income_tax_payable": 0.00,
+    "_comment_special_income_tax_payable": "c5160_TasTmEj — payable special income tax. Rolls into header c114_TmEj.",
+    "other_special_income_tax": 0.00
+  },
+
+  "_comment_annex_7": "Optional. Dividends + equity distributions (Annex 7 / tsd_L7_0). Scalar-only — caller supplies all c7xxx values. payable_income_tax (c7200_TasutavTm) rolls into header c110_Tm; equity_social_tax_corrected (c7050_OmakapSmKorrig) rolls into header c115_Sm. The full key→c-code map is in references/tsd-codes.md. Source data should come from transactions of type DIVIDEND_PAYMENT (registered by migration 382).",
+  "annex_7": {
+    "dividends_total": 0.00,
+    "_comment_dividends_total": "c7008_DivKokku — total dividends declared in the period",
+    "equity_social_tax_corrected": 0.00,
+    "payable_income_tax": 0.00
+  },
+
+  "_comment_inf1": "Optional. Annual companion form (INF1 / tsd_Inf1_0) — typically only filed in December alongside the year-end TSD. Captures one row per dividend recipient. recipients[] is a list; each recipient needs name (c13020_Nimi), distribution_type_code (c13050_VmValiKood — see references/tsd-codes.md: DK=dividend, TDK=tax-paid dividend, AOT=non-taxable distribution), and distribution_amount (c13060_VmSumma). Optional: estonian_registry_code OR foreign_registry_code, country_code, foreign_address, taxable_amount, exempt_amount, tax_rate, withheld_tax.",
+  "inf1": {
+    "withheld_tax_total": 0.00,
+    "taxed_proportion": 1.00,
+    "recipients": []
+  }
 }

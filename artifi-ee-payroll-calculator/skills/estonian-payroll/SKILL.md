@@ -44,6 +44,8 @@ Verify:
 
 Fetch all employees included in this payroll run:
 
+> **Note for TSD-bound payrolls:** `employee_compensation.payment_classification_slug` (a real column, e.g. `salary_wage`, `board_fee`) determines the per-payment `c1020_ValiKood` value at TSD generation time. Per-employee TSD attributes (`residency`, `is_pensioner`, `pension_fund_id`, `basic_exemption_code`) live under `master_employees.metadata.tax_filing.{...}`. The calculation step uses them indirectly (e.g., to skip unemployment insurance for `is_pensioner=true`); the TSD generator (`/generate-tsd` command) reads them directly when building the XML. Always set `payment_classification_slug` on each `employee_compensation` row at create time so the TSD step doesn't have to guess. See `references/tsd-codes.md` for the slug → c1020 map.
+
 ```python
 # Get employees for this entity
 employees = list_entities("employee", {
