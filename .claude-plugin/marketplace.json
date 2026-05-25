@@ -79,6 +79,30 @@
       "version": "1.0.0",
       "category": "accounting",
       "keywords": ["reconciliation", "payment-matching", "cash-application", "AR", "AP", "invoices"]
+    },
+    {
+      "name": "artifi-core-country-setup",
+      "source": "./artifi-core-country-setup",
+      "description": "Generates country-specific tax and payroll configuration templates. Researches VAT/GST rates, tax authorities, withholding taxes, and payroll rules to produce a structured JSON template for onboarding.",
+      "version": "1.0.0",
+      "category": "configuration",
+      "keywords": ["onboarding", "country", "tax", "payroll", "configuration", "template"]
+    },
+    {
+      "name": "artifi-credit-intelligence",
+      "source": "./artifi-credit-intelligence",
+      "description": "Credit intelligence on a borrower's live general ledger. Produces credit memos with DSCR, leverage, working-capital cycle, concentration risk, and early-warning signals — every metric cited back to specific GL transactions. For banks, alternative lenders, and PE credit teams monitoring portfolio borrowers in real time.",
+      "version": "1.0.0",
+      "category": "credit",
+      "keywords": ["credit", "DSCR", "covenant", "credit-memo", "underwriting", "portfolio", "watchlist", "EWS"]
+    },
+    {
+      "name": "artifi-fund-servicing",
+      "source": "./artifi-fund-servicing",
+      "description": "Fund-servicing back office on an AI-native ledger. Strikes NAV, accrues management and performance fees, processes subscriptions and redemptions, maintains the cap table, and produces investor statements. The accounting layer behind tokenized funds, FoFs, and private-market vehicles.",
+      "version": "0.1.0",
+      "category": "fund-administration",
+      "keywords": ["fund", "NAV", "fund-servicing", "cap-table", "subscription", "redemption", "SGR", "tokenized-fund"]
     }
   ]
 }
