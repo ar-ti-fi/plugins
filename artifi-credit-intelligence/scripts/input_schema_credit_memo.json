@@ -1,0 +1,194 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Credit Memo Input",
+  "type": "object",
+  "required": ["entity", "as_of_date", "snapshot", "trajectory", "liquidity", "coverage", "concentration", "signals"],
+  "properties": {
+    "entity": {
+      "type": "object",
+      "required": ["name", "id", "currency"],
+      "properties": {
+        "name": {"type": "string"},
+        "id": {"type": "integer"},
+        "currency": {"type": "string"},
+        "country": {"type": "string"},
+        "industry": {"type": "string"}
+      }
+    },
+    "as_of_date": {"type": "string", "format": "date"},
+    "run_timestamp": {"type": "string", "format": "date-time"},
+
+    "snapshot": {
+      "type": "object",
+      "description": "Headline numbers for the front page.",
+      "properties": {
+        "total_assets": {"type": "number"},
+        "total_equity": {"type": "number"},
+        "cash": {"type": "number"},
+        "net_debt": {"type": "number"},
+        "revenue_ttm": {"type": "number"},
+        "ebitda_ttm": {"type": "number"},
+        "dscr": {"type": "number"},
+        "leverage": {"type": "number"},
+        "icr": {"type": "number"},
+        "dso_days": {"type": "number"},
+        "dpo_days": {"type": "number"},
+        "dio_days": {"type": "number"},
+        "ccc_days": {"type": "number"},
+        "top_customer_share": {"type": "number"}
+      }
+    },
+
+    "trajectory": {
+      "type": "object",
+      "description": "13-month P&L history.",
+      "properties": {
+        "months": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["period", "revenue", "cogs", "opex", "ebitda"],
+            "properties": {
+              "period": {"type": "string"},
+              "revenue": {"type": "number"},
+              "cogs": {"type": "number"},
+              "gross_profit": {"type": "number"},
+              "gross_margin_pct": {"type": "number"},
+              "opex": {"type": "number"},
+              "ebitda": {"type": "number"},
+              "ebitda_margin_pct": {"type": "number"}
+            }
+          }
+        }
+      }
+    },
+
+    "liquidity": {
+      "type": "object",
+      "properties": {
+        "cash_by_account": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "account_number": {"type": "string"},
+              "account_name": {"type": "string"},
+              "balance": {"type": "number"}
+            }
+          }
+        },
+        "monthly_operating_cf": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "period": {"type": "string"},
+              "operating_cf": {"type": "number"}
+            }
+          }
+        },
+        "runway_months": {"type": "number"},
+        "available_revolver": {"type": "number"}
+      }
+    },
+
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "ebitda_ttm": {"type": "number"},
+        "interest_expense_ttm": {"type": "number"},
+        "principal_paid_ttm": {"type": "number"},
+        "total_debt_service": {"type": "number"},
+        "dscr": {"type": "number"},
+        "icr": {"type": "number"},
+        "leverage": {"type": "number"},
+        "covenants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "operator": {"type": "string", "enum": ["min", "max"]},
+              "threshold": {"type": "number"},
+              "current": {"type": "number"},
+              "headroom": {"type": "number"},
+              "status": {"type": "string", "enum": ["OK", "WATCH", "TIGHT", "BREACH"]}
+            }
+          }
+        }
+      }
+    },
+
+    "concentration": {
+      "type": "object",
+      "properties": {
+        "top_customers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "open_ar": {"type": "number"},
+              "share_of_ar_pct": {"type": "number"},
+              "share_of_ttm_revenue_pct": {"type": "number"}
+            }
+          }
+        },
+        "top_vendors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "open_ap": {"type": "number"},
+              "share_of_ap_pct": {"type": "number"},
+              "share_of_ttm_spend_pct": {"type": "number"}
+            }
+          }
+        },
+        "ar_aging_buckets": {
+          "type": "object",
+          "properties": {
+            "current": {"type": "number"},
+            "days_1_30": {"type": "number"},
+            "days_31_60": {"type": "number"},
+            "days_61_90": {"type": "number"},
+            "days_91_plus": {"type": "number"},
+            "pct_60_plus": {"type": "number"}
+          }
+        },
+        "ap_aging_buckets": {
+          "type": "object",
+          "properties": {
+            "current": {"type": "number"},
+            "days_1_30": {"type": "number"},
+            "days_31_60": {"type": "number"},
+            "days_61_90": {"type": "number"},
+            "days_91_plus": {"type": "number"},
+            "pct_60_plus": {"type": "number"},
+            "in_dispute_count": {"type": "integer"},
+            "in_dispute_amount": {"type": "number"}
+          }
+        }
+      }
+    },
+
+    "signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "headline", "citations"],
+        "properties": {
+          "code": {"type": "string", "description": "Signal code from credit-signals.md (e.g. GM_COMPRESSION)"},
+          "severity": {"type": "string", "enum": ["LOW", "MEDIUM", "HIGH"]},
+          "headline": {"type": "string", "description": "One-line description of what was detected"},
+          "citations": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "2-3 specific data points (account balances, txn numbers, dates) the signal is based on"
+          }
+        }
+      }
+    }
+  }
+}

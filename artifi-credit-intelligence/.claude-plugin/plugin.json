@@ -1,0 +1,8 @@
+{
+  "name": "artifi-credit-intelligence",
+  "description": "Credit intelligence on a borrower's live general ledger. Reads the transactional source of truth (not lagging self-reported PDFs) and produces a real credit memo: DSCR, leverage, working-capital cycle, concentration risk, early-warning signals, with citations back to the underlying transactions. Designed for banks, alternative lenders, and PE credit teams monitoring portfolio borrowers in real time.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Arfiti"
+  }
+}

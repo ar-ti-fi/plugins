@@ -1,0 +1,8 @@
+{
+  "name": "artifi-fund-servicing",
+  "description": "Fund-servicing back office on an AI-native ledger. Strikes NAV, accrues management and performance fees, processes investor subscriptions and redemptions, maintains the per-investor cap table, and produces investor statements. Designed for the back-office layer behind tokenized funds, private market vehicles, and FoF structures — where the front-end (token, DLT, marketplace) is solved but the accounting and servicing layer is still legacy.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Arfiti"
+  }
+}
