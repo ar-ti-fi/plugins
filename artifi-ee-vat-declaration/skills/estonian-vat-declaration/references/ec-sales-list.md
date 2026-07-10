@@ -76,27 +76,30 @@ Before including a customer on Form VD:
 2. Record verification date and result
 3. If VAT number is invalid, the supply **cannot be zero-rated** — standard rate applies
 
-## XML Format
+## Filing format
 
-```xml
-<VD xmlns="http://emta.ee/schemas/vat">
-  <Period>
-    <Year>2025</Year>
-    <Month>01</Month>
-  </Period>
-  <TaxpayerRegCode>12345678</TaxpayerRegCode>
-  <TaxpayerVATNumber>EE123456789</TaxpayerVATNumber>
-  <Entry>
-    <CustomerVATNumber>FI12345678</CustomerVATNumber>
-    <CountryCode>FI</CountryCode>
-    <SupplyType>G</SupplyType>
-    <Amount>15000.00</Amount>
-  </Entry>
-  <Entry>
-    <CustomerVATNumber>DE987654321</CustomerVATNumber>
-    <CountryCode>DE</CountryCode>
-    <SupplyType>S</SupplyType>
-    <Amount>8500.00</Amount>
-  </Entry>
-</VD>
-```
+The VD is a **separate** e-MTA declaration from the KMD — it is **not** part of the
+KMD2 dataset and is not produced by `generate_kmd.py`. Do **not** reuse the KMD
+`vatDeclaration` schema or any `http://emta.ee/schemas/vat` namespace for it (that
+namespace does not exist at e-MTA).
+
+Two supported ways to file:
+
+1. **Portal entry / fillable form** — enter the per-partner rows at
+   <https://maasikas.emta.ee/decl-list-client/vd>. This is what this plugin prepares
+   the data for today: use the "Data required per customer" table above, grouped by
+   partner VAT number and supply type, and reconcile against KMD lines 3.1 / 3.2 before
+   entering.
+2. **XML/CSV upload** — e-MTA publishes an official VD upload format (XML sample + XSD)
+   on its technical-information-services page, alongside the KMD2 files.
+
+> **TODO — machine-format generation not implemented.** Generating the official VD
+> upload file is a scoped follow-up, mirroring how the KMD2 CSV/XML is handled: download
+> the authoritative VD **XSD** from e-MTA, bundle it in the plugin, generate the file,
+> and validate with `xmllint --schema` before writing. The real VD element names must
+> come from that XSD — do not hand-author them. Until then, file the VD via the portal.
+
+**Authoritative sources:**
+- VD/VDP forms & procedure: <https://www.emta.ee/en/business-client/taxes-and-payment/tax-returns-exchange-information/vat-return-forms-vd-and-vdp>
+- Technical information (XSD/sample downloads): <https://www.emta.ee/en/business-client/e-services-training-courses/how-use-e-services/technical-information-services>
+- e-MTA VD submission: <https://maasikas.emta.ee/decl-list-client/vd>
