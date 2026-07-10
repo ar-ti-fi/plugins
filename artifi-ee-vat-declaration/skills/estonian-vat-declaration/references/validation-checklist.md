@@ -74,19 +74,21 @@ net for that agent bug.)
 
 ## 5. GL tie-out — BLOCK on material difference
 
-Reconcile the declaration to the VAT control accounts via
-`generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD"})`
-for the period:
+Reconcile the declaration against BOTH the canonical tax computation and the GL:
 
-- output VAT (`24%·line1 + reduced rates`) ↔ output-VAT account movement (2300 / 2310);
-- input VAT (`inputVatTotal`, line 5) ↔ input-VAT account movement (2300 debit side / 2311);
-- net ↔ line 12.
+1. **Canonical computation** — run `generate_report("vat_report", {"legal_entity_id":
+   ID, "start_date": "YYYY-MM-01", "end_date": "YYYY-MM-DD"})`. It aggregates from the
+   `v_tax_lines` view (migration 465) — the same source as the dashboard Sales-tax
+   report — so output VAT, input VAT and net must match your computed
+   `declaration_body` figures.
+2. **GL tie-out** — via
+   `generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD"})`:
+   - output VAT (`24%·line1 + reduced rates`) ↔ output-VAT account movement (2300 / 2310);
+   - input VAT (`inputVatTotal`, line 5) ↔ input-VAT account movement (2300 debit side / 2311);
+   - net ↔ line 12.
 
 Report any difference above a rounding tolerance (≈ EUR 1) together with the driving
-account.
-
-> **Note:** the built-in `vat_report` is currently broken (`relation "tax_transactions"
-> does not exist`), so tie out against the **trial balance** until that is fixed.
+account or tax code.
 
 ## 6. INF threshold / annex consistency — BLOCK
 
