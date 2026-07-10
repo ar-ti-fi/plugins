@@ -63,31 +63,57 @@ Report vendors where total AP invoices > EUR 1,000 in the period.
 | Cash transactions without partner | Aggregate as "Cash sales" if > threshold |
 | Multiple invoices to same partner | Combine into single partner entry |
 
-## XML Format
+## Format (KMD2)
+
+KMD INF A/B are the `salesAnnex` and `purchasesAnnex` parts of the **single**
+`vatDeclaration` document (see `references/kmd-form-structure.md`). There is no
+separate `<KMDINF>` file and no `http://emta.ee/schemas/vat` namespace. When no
+partner exceeds the threshold, set `noSales` / `noPurchases` to `true` in
+`declarationBody` and omit the annex entirely.
+
+Feed the generator via the `sales_annex` / `purchases_annex` blocks in the input JSON.
+In summed-per-partner mode (`sum_per_partner: true`) each line is one partner:
+
+```json
+"sales_annex": {
+  "sum_per_partner": true,
+  "lines": [
+    {"buyerRegCode": "87654321", "buyerName": "Customer OÜ",
+     "invoiceSum": 13000.00, "taxRate": "24", "sumForRateInPeriod": 13000.00}
+  ]
+},
+"purchases_annex": {
+  "sum_per_partner": true,
+  "lines": [
+    {"sellerRegCode": "11223344", "sellerName": "Vendor AS",
+     "invoiceSumVat": 3660.00, "vatInPeriod": 660.00}
+  ]
+}
+```
+
+`generate_kmd.py` renders these into schema-valid `<salesAnnex>` / `<purchasesAnnex>`
+elements:
 
 ```xml
-<KMDINF xmlns="http://emta.ee/schemas/vat">
-  <Period>
-    <Year>2025</Year>
-    <Month>01</Month>
-  </Period>
-  <PartA>
-    <Partner>
-      <RegCode>87654321</RegCode>
-      <Name>Customer OU</Name>
-      <InvoiceCount>5</InvoiceCount>
-      <TaxableAmount>5000.00</TaxableAmount>
-      <VATAmount>1200.00</VATAmount>
-    </Partner>
-  </PartA>
-  <PartB>
-    <Partner>
-      <RegCode>11223344</RegCode>
-      <Name>Vendor AS</Name>
-      <InvoiceCount>3</InvoiceCount>
-      <TaxableAmount>3000.00</TaxableAmount>
-      <VATAmount>720.00</VATAmount>
-    </Partner>
-  </PartB>
-</KMDINF>
+<salesAnnex>
+  <saleLine>
+    <buyerRegCode>87654321</buyerRegCode>
+    <buyerName>Customer OÜ</buyerName>
+    <invoiceSum>13000.00</invoiceSum>
+    <taxRate>24</taxRate>
+    <sumForRateInPeriod>13000.00</sumForRateInPeriod>
+  </saleLine>
+</salesAnnex>
+<purchasesAnnex>
+  <purchaseLine>
+    <sellerRegCode>11223344</sellerRegCode>
+    <sellerName>Vendor AS</sellerName>
+    <invoiceSumVat>3660.00</invoiceSumVat>
+    <vatInPeriod>660.00</vatInPeriod>
+  </purchaseLine>
+</purchasesAnnex>
 ```
+
+Per-invoice (detailed) mode is also valid: set `sum_per_partner: false` and add
+`invoiceNumber` + `invoiceDate` to each line (one line per invoice). Mandatory fields
+per the XSD: A → `invoiceSum`, `taxRate`; B → `invoiceSumVat`, `vatInPeriod`.

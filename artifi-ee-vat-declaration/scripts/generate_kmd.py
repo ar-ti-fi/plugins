@@ -1,39 +1,156 @@
 #!/usr/bin/env python3
 """
-generate_kmd.py — Generate Estonian VAT declaration XML files for EMTA.
+generate_kmd.py — Generate the Estonian VAT return (KMD) in the official KMD2 format.
 
-Generates up to three files:
-  KMD_YYYYMM_{REGCODE}.xml      — Main KMD form (Lines 1-13)
-  KMDINF_YYYYMM_{REGCODE}.xml   — KMD INF annex (partner reporting, Parts A & B)
-  VD_YYYYMM_{REGCODE}.xml       — EC Sales List (only if vd_entries are present)
+Produces two artifacts for a single legal entity and period:
+
+  1. KMD_YYYYMM_{REGCODE}.csv           — the KMD2 machine CSV (e-MTA's fixed-column
+                                          upload format). **PRIMARY ARTIFACT.**
+  2. vatDeclaration_YYYYMM_{REGCODE}.xml — the KMD2 XML: general part + main form
+                                          (declarationBody) + KMD INF A/B annexes
+                                          (salesAnnex / purchasesAnnex). Validated
+                                          against the bundled vatdeclaration.xsd
+                                          before it is written.
+
+The KMD2 format is defined by e-MTA:
+  Technical info : https://www.emta.ee/en/business-client/e-services-training-courses/how-use-e-services/technical-information-services
+  XSD (07.2025+) : https://ncfailid.emta.ee/s/W5ncAiYRyye2of3/download/vatdeclaration.xsd
+  Format desc.   : https://www.emta.ee/media/1096/download
+
+Key facts (verified against the bundled XSD and e-MTA's own examples
+`vatdeclaration_example6.csv` and the Hala `KMD_202606_14276473.csv`):
+
+  * Root element `vatDeclaration`, NO XML namespace. The old
+    `<KMD xmlns="http://emta.ee/schemas/vat">` output was fabricated and is gone.
+  * General part order: taxPayerRegCode, submitterPersonCode (optional; required for
+    the machine interface), year, month, declarationType (1=normal), version.
+    `version` is period-dependent: KMD4 for 2024, KMD5 for 01.2025–06.2025,
+    KMD6 from 07.2025 onward.
+  * declarationBody holds taxable BASES by rate (transactions24 first, from 07.2025),
+    plus zero-rated / EU / export bases, `inputVatTotal` (line 5, a VAT amount), the
+    EU-acquisition / other-acquisition (reverse charge) bases, and adjustments. There
+    are NO Line1_1 / Line4 / Line12 elements — e-MTA computes total VAT (line 4),
+    VAT due (line 12) and overpaid (line 13) itself.
+  * The machine CSV is a fixed-column, 31-field-per-row, semicolon-separated file with
+    CRLF line endings, dot decimals and TRUE/FALSE flags. Row types: `header` (general
+    part), the version row (declarationBody), `A` rows (salesAnnex saleLine), `B` rows
+    (purchasesAnnex purchaseLine, dates as DD.MM.YYYY). It carries NO total-VAT or
+    payable columns — do not emit them. This is NOT the English prose-header human
+    export, which e-MTA rejects.
+
+Reverse charge: e-MTA computes line 4 (total VAT) from SALES only
+(24%×line1 + 9%×line2 + …); it does NOT add the self-assessed VAT on lines 6/7. For a
+full-deduction taxpayer the reverse charge therefore nets out and must be declared ONLY
+as the base in line 6 (`euAcquisitionsGoodsAndServicesTotal`, EU suppliers) or line 7
+(`acquisitionOtherGoodsAndServicesTotal`, non-EU + domestic reverse charge) — do NOT
+gross it into `inputVatTotal` (line 5), which is the deductible input VAT on
+domestic/import purchases only. A partial/limited-deduction taxpayer must handle the
+non-deductible reverse-charge output separately; this script warns when it cannot
+assume 100% deduction (see `input_vat_full_deduction`).
 
 Usage:
-    python3 generate_kmd.py --input /tmp/kmd_data_12345678.json --output /tmp/
+    python3 generate_kmd.py --input /tmp/kmd_data_14276473.json --output /tmp/
 
-Input JSON format: see input_schema_kmd.json
+Input JSON format: see input_schema_kmd.json (real KMD2 element names).
 """
 
 import argparse
 import json
+import re
+import subprocess
 import sys
+import tempfile
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
-NS_VAT = "http://emta.ee/schemas/vat"
+# Bundled official schema, kept next to this script so validation works offline.
+XSD_PATH = Path(__file__).resolve().parent / "vatdeclaration.xsd"
+
 TOLERANCE = Decimal("0.02")
 
-VALID_SUPPLY_TYPES = {"G", "S", "T"}
+# declarationBody child elements in the exact order the XSD requires (and the exact
+# order the machine CSV's 26 body columns use), omitting the obsolete selfSupply20 /
+# selfSupply9. The two car-count fields are integers; everything else is a 2-decimal
+# monetary value. This list is a strict subsequence of the XSD sequence, so emitting
+# the present elements in this order is schema-valid.
+BODY_ELEMENTS: List[str] = [
+    "transactions24",                       # line 1   (24%, valid from 07.2025)
+    "transactions22",                       # line 1   (22%)
+    "transactions20",                       # line 1¹  (20%)
+    "transactions9",                        # line 2   (9%)
+    "transactions5",                        # line 2¹  (5%)
+    "transactions13",                       # line 2²  (13%, valid from 01.2025)
+    "transactionsZeroVat",                  # line 3   (0%)
+    "euSupplyInclGoodsAndServicesZeroVat",  # line 3.1
+    "euSupplyGoodsZeroVat",                 # line 3.1.1
+    "exportZeroVat",                        # line 3.2
+    "salePassengersWithReturnVat",          # line 3.2.1
+    "inputVatTotal",                        # line 5   (total deductible input VAT)
+    "importVat",                            # line 5.1 (import VAT paid in customs)
+    "fixedAssetsVat",                       # line 5.2 (input VAT on fixed assets)
+    "carsVat",                              # line 5.3 (input VAT on 100% cars)
+    "numberOfCars",                         # line 5.3 (count, integer)
+    "carsPartialVat",                       # line 5.4 (input VAT on partial cars)
+    "numberOfCarsPartial",                  # line 5.4 (count, integer)
+    "euAcquisitionsGoodsAndServicesTotal",  # line 6   (EU acquisitions + services)
+    "euAcquisitionsGoods",                  # line 6.1
+    "acquisitionOtherGoodsAndServicesTotal",# line 7   (non-EU services + reverse charge)
+    "acquisitionImmovablesAndScrapMetalAndGold",  # line 7.1
+    "supplyExemptFromTax",                  # line 8
+    "supplySpecialArrangements",            # line 9
+    "adjustmentsPlus",                      # line 10  (+ adjustment, non-negative)
+    "adjustmentsMinus",                     # line 11  (- adjustment, non-negative)
+]
+
+INTEGER_ELEMENTS = {"numberOfCars", "numberOfCarsPartial"}
+NON_NEGATIVE_ELEMENTS = {"adjustmentsPlus", "adjustmentsMinus"}
+
+# Every machine-CSV row is padded to this many semicolon-separated fields.
+CSV_FIELDS = 31
+
+# Standard VAT rates that feed the computed "total VAT" (line 4) shown in the console
+# summary. Reverse-charge lines (6 / 7) are intentionally NOT here: e-MTA's line 4 is
+# domestic sales VAT only.
+LINE4_RATES: Dict[str, Decimal] = {
+    "transactions24": Decimal("0.24"),
+    "transactions22": Decimal("0.22"),
+    "transactions20": Decimal("0.20"),
+    "transactions9":  Decimal("0.09"),
+    "transactions5":  Decimal("0.05"),
+    "transactions13": Decimal("0.13"),
+}
+
+REVERSE_CHARGE_BASE_ELEMENTS = (
+    "euAcquisitionsGoodsAndServicesTotal",
+    "acquisitionOtherGoodsAndServicesTotal",
+)
 
 
-def fmt(value) -> str:
-    """Format a numeric value as 2-decimal string."""
-    return str(Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+# --------------------------------------------------------------------------- #
+# Small helpers
+# --------------------------------------------------------------------------- #
+def dec(value) -> Decimal:
+    """Coerce any input (None/str/number) to a Decimal, treating None/'' as 0."""
+    if value is None or value == "":
+        return Decimal("0")
+    return Decimal(str(value))
 
 
-def esc(s: str) -> str:
+def q2(value) -> Decimal:
+    """Quantize to 2 decimals, half-up."""
+    return dec(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def amount(value) -> str:
+    """Monetary value: 2 decimals, dot separator (e.g. '910.00'). Used by CSV and XML."""
+    return f"{q2(value):.2f}"
+
+
+def esc(text) -> str:
     """Escape XML special characters."""
     return (
-        str(s)
+        str(text)
         .replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
@@ -42,301 +159,581 @@ def esc(s: str) -> str:
     )
 
 
-def d(data: dict, key: str) -> Decimal:
-    """Get a decimal value from dict, defaulting to 0."""
-    return Decimal(str(data.get(key, 0) or 0))
+def xml_flag(value: bool) -> str:
+    return "true" if value else "false"
 
 
-def validate(data: dict) -> list:
-    """Validate input data. Returns list of error strings."""
-    errors = []
+def csv_flag(value: bool) -> str:
+    return "TRUE" if value else "FALSE"
+
+
+def csv_date(value) -> str:
+    """Convert an ISO date (YYYY-MM-DD, as the XML uses) to the CSV's DD.MM.YYYY."""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    parts = text.split("-")
+    if len(parts) == 3 and len(parts[0]) == 4:
+        year, month, day = parts
+        return f"{int(day):02d}.{int(month):02d}.{year}"
+    return text  # already DD.MM.YYYY or unrecognised — pass through unchanged
+
+
+def compute_version(year: int, month: int) -> str:
+    """
+    Return the mandatory KMD2 version string for the given period.
+
+    Per the XSD: KMD4 for 01.2024–12.2024, KMD5 for 01.2025–06.2025,
+    KMD6 from 07.2025 onward.
+    """
+    period = year * 100 + month
+    if period >= 202507:
+        return "KMD6"
+    if period >= 202501:
+        return "KMD5"
+    if period >= 202401:
+        return "KMD4"
+    raise ValueError(
+        f"Period {year}-{month:02d} predates the KMD2 format (valid from 01.2024)"
+    )
+
+
+def compute_totals(body: dict) -> Dict[str, Decimal]:
+    """
+    Compute line 4 (total VAT), line 12 (VAT due) and line 13 (overpaid) the way e-MTA
+    does — for the console summary only. These are NOT emitted in the CSV or XML.
+
+    line 4  = Σ(base × rate) over the six domestic standard rates (SALES only; reverse
+              charge on lines 6/7 is excluded).
+    net     = line4 + adjustmentsPlus − inputVatTotal − adjustmentsMinus.
+    line 12 = max(0, net)   (payable);  line 13 = max(0, −net)   (overpaid).
+    """
+    line4 = sum((q2(body.get(key, 0)) * rate for key, rate in LINE4_RATES.items()),
+                Decimal("0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    net = (
+        line4
+        + q2(body.get("adjustmentsPlus", 0))
+        - q2(body.get("inputVatTotal", 0))
+        - q2(body.get("adjustmentsMinus", 0))
+    )
+    return {
+        "_line4": line4,
+        "_line12": max(Decimal("0"), net),
+        "_line13": max(Decimal("0"), -net),
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Validation (structural; the XSD is the authority for the XML)
+# --------------------------------------------------------------------------- #
+def validate(data: dict) -> List[str]:
+    """Validate input data structurally. Returns a list of error strings."""
+    errors: List[str] = []
 
     if not data.get("regcode"):
         errors.append("regcode is required")
     if not data.get("year"):
         errors.append("year is required")
     month = data.get("month")
-    if not month or not (1 <= int(month) <= 12):
+    if month is None or not (1 <= int(month) <= 12):
         errors.append("month is required and must be 1-12")
+    elif data.get("year") and (int(data["year"]) * 100 + int(month)) < 202401:
+        errors.append(
+            f"period {data['year']}-{int(month):02d} predates the KMD2 format "
+            "(valid from 01.2024)"
+        )
 
-    lines = data.get("kmd_lines", {})
+    if int(data.get("declaration_type", 1)) not in (1, 2):
+        errors.append("declaration_type must be 1 (normal) or 2 (bankruptcy)")
+
+    body = data.get("declaration_body", {})
+    if not isinstance(body, dict):
+        errors.append("declaration_body must be an object")
+        body = {}
+
+    # No fabricated Line1_1/Line4/Line12 keys, and no removed importVatPayable field.
+    stale = [k for k in body if k.lower().startswith("line") or k == "importVatPayable"]
+    if stale:
+        errors.append(
+            "declaration_body uses removed keys "
+            f"({', '.join(sorted(stale))}); use KMD2 element names "
+            "(transactions24, inputVatTotal, …) — see input_schema_kmd.json"
+        )
+
+    unknown = [k for k in body if k not in BODY_ELEMENTS and not k.lower().startswith("line")
+               and k != "importVatPayable"]
+    if unknown:
+        errors.append(
+            f"declaration_body has unknown element(s): {', '.join(sorted(unknown))}"
+        )
+
+    for key in NON_NEGATIVE_ELEMENTS:
+        if key in body and dec(body[key]) < 0:
+            errors.append(f"declaration_body.{key} must be >= 0")
+
+    if dec(body.get("euAcquisitionsGoods", 0)) - dec(
+        body.get("euAcquisitionsGoodsAndServicesTotal", 0)
+    ) > TOLERANCE:
+        errors.append(
+            "declaration_body.euAcquisitionsGoods (line 6.1) cannot exceed "
+            "euAcquisitionsGoodsAndServicesTotal (line 6)"
+        )
+
+    errors += _validate_annex(data.get("sales_annex"), "sales_annex",
+                              "buyerRegCode", "buyerName", "invoiceSum", "taxRate")
+    errors += _validate_annex(data.get("purchases_annex"), "purchases_annex",
+                              "sellerRegCode", "sellerName", "invoiceSumVat",
+                              "vatInPeriod")
+    return errors
+
+
+def _validate_annex(annex, name, id_field, name_field, *required_fields) -> List[str]:
+    """Validate a sales/purchases annex block. Empty/None annex is valid (omitted)."""
+    errors: List[str] = []
+    if not annex:
+        return errors
+    if not isinstance(annex, dict):
+        return [f"{name} must be an object"]
+    for i, line in enumerate(annex.get("lines", []) or []):
+        prefix = f"{name}.lines[{i}]"
+        if not line.get(id_field) and not line.get(name_field):
+            errors.append(f"{prefix}: at least one of {id_field} / {name_field} is required")
+        for field in required_fields:
+            if line.get(field) in (None, ""):
+                errors.append(f"{prefix}: {field} is required")
+    return errors
+
+
+def reverse_charge_warnings(data: dict) -> List[str]:
+    """
+    Return warnings (not errors) about reverse-charge handling. e-MTA does not add
+    self-assessed VAT on lines 6/7 to line 4, so the netting only holds at 100% input
+    deduction. Flag partial deduction loudly.
+    """
+    body = data.get("declaration_body", {}) or {}
+    rc = sum((q2(body.get(k, 0)) for k in REVERSE_CHARGE_BASE_ELEMENTS), Decimal("0"))
+    if rc <= 0:
+        return []
+    warnings = [
+        f"Reverse-charge bases present (lines 6/7 total {rc:.2f}). e-MTA computes "
+        "line 4 from sales only, so inputVatTotal (line 5) must be the deductible "
+        "input VAT on domestic/import purchases ONLY — do not gross the reverse "
+        "charge into it."
+    ]
+    if not bool(data.get("input_vat_full_deduction", True)):
+        warnings.append(
+            "input_vat_full_deduction is false: the reverse charge does NOT net out. "
+            "The non-deductible portion of the self-assessed VAT is still payable and "
+            "must be added (e.g. via adjustmentsPlus / line 10). Review before filing."
+        )
+    return warnings
+
+
+# --------------------------------------------------------------------------- #
+# XML generation
+# --------------------------------------------------------------------------- #
+def _body_xml(body: dict) -> List[str]:
+    """Render the declarationBody child elements that carry a non-zero value."""
+    out: List[str] = []
+    for key in BODY_ELEMENTS:
+        if key not in body or body[key] in (None, ""):
+            continue
+        if key in INTEGER_ELEMENTS:
+            ival = int(dec(body[key]))
+            if ival != 0:
+                out.append(f"    <{key}>{ival}</{key}>")
+        elif q2(body[key]) != 0:
+            out.append(f"    <{key}>{amount(body[key])}</{key}>")
+    return out
+
+
+def _sales_annex_xml(annex: Optional[dict]) -> List[str]:
+    """Render <salesAnnex> when partner lines exist, else nothing."""
+    lines = (annex or {}).get("lines") or []
     if not lines:
-        errors.append("kmd_lines is required")
-    else:
-        line1_1 = d(lines, "line1_1")
-        line2_1 = d(lines, "line2_1")
-        line4 = d(lines, "line4")
-        line8 = d(lines, "line8")
-        line10 = d(lines, "line10")
-        line11 = d(lines, "line11")
-        line12 = d(lines, "line12")
-        line13 = d(lines, "line13")
+        return []
+    out = ["  <salesAnnex>"]
+    for line in lines:
+        out.append("    <saleLine>")
+        if line.get("buyerRegCode"):
+            out.append(f"      <buyerRegCode>{esc(line['buyerRegCode'])}</buyerRegCode>")
+        if line.get("buyerName"):
+            out.append(f"      <buyerName>{esc(line['buyerName'])}</buyerName>")
+        if line.get("invoiceNumber"):
+            out.append(f"      <invoiceNumber>{esc(line['invoiceNumber'])}</invoiceNumber>")
+        if line.get("invoiceDate"):
+            out.append(f"      <invoiceDate>{esc(line['invoiceDate'])}</invoiceDate>")
+        out.append(f"      <invoiceSum>{amount(line.get('invoiceSum', 0))}</invoiceSum>")
+        out.append(f"      <taxRate>{esc(line.get('taxRate', ''))}</taxRate>")
+        if line.get("invoiceSumForRate") not in (None, ""):
+            out.append(f"      <invoiceSumForRate>{amount(line['invoiceSumForRate'])}</invoiceSumForRate>")
+        if line.get("sumForRateInPeriod") not in (None, ""):
+            out.append(f"      <sumForRateInPeriod>{amount(line['sumForRateInPeriod'])}</sumForRateInPeriod>")
+        if line.get("comments"):
+            out.append(f"      <comments>{esc(line['comments'])}</comments>")
+        out.append("    </saleLine>")
+    out.append("  </salesAnnex>")
+    return out
 
-        # Validate Line 10 formula: (Line 1.1 + Line 2.1) - Line 4 + Line 8
-        expected_line10 = (line1_1 + line2_1) - line4 + line8
-        if abs(line10 - expected_line10) > TOLERANCE:
-            errors.append(
-                f"kmd_lines.line10 ({fmt(line10)}) does not match formula "
-                f"(line1_1 {fmt(line1_1)} + line2_1 {fmt(line2_1)}) "
-                f"- line4 ({fmt(line4)}) + line8 ({fmt(line8)}) = {fmt(expected_line10)}"
-            )
 
-        # Validate Lines 12/13 mutual exclusion
-        net = line10 + line11
-        if line12 > Decimal("0") and line13 > Decimal("0"):
-            errors.append(
-                f"kmd_lines.line12 and line13 are mutually exclusive — "
-                f"only one can be non-zero (line12={fmt(line12)}, line13={fmt(line13)})"
-            )
+def _purchases_annex_xml(annex: Optional[dict]) -> List[str]:
+    """Render <purchasesAnnex> when partner lines exist, else nothing."""
+    lines = (annex or {}).get("lines") or []
+    if not lines:
+        return []
+    out = ["  <purchasesAnnex>"]
+    for line in lines:
+        out.append("    <purchaseLine>")
+        if line.get("sellerRegCode"):
+            out.append(f"      <sellerRegCode>{esc(line['sellerRegCode'])}</sellerRegCode>")
+        if line.get("sellerName"):
+            out.append(f"      <sellerName>{esc(line['sellerName'])}</sellerName>")
+        if line.get("invoiceNumber"):
+            out.append(f"      <invoiceNumber>{esc(line['invoiceNumber'])}</invoiceNumber>")
+        if line.get("invoiceDate"):
+            out.append(f"      <invoiceDate>{esc(line['invoiceDate'])}</invoiceDate>")
+        out.append(f"      <invoiceSumVat>{amount(line.get('invoiceSumVat', 0))}</invoiceSumVat>")
+        if line.get("vatSum") not in (None, ""):
+            out.append(f"      <vatSum>{amount(line['vatSum'])}</vatSum>")
+        out.append(f"      <vatInPeriod>{amount(line.get('vatInPeriod', 0))}</vatInPeriod>")
+        if line.get("comments"):
+            out.append(f"      <comments>{esc(line['comments'])}</comments>")
+        out.append("    </purchaseLine>")
+    out.append("  </purchasesAnnex>")
+    return out
 
-        # Validate Line 12 = max(0, net)
-        expected_line12 = max(Decimal("0"), net)
-        if abs(line12 - expected_line12) > TOLERANCE:
-            errors.append(
-                f"kmd_lines.line12 ({fmt(line12)}) should be max(0, line10+line11) = {fmt(expected_line12)}"
-            )
 
-        # Validate Line 13 = max(0, -net)
-        expected_line13 = max(Decimal("0"), -net)
-        if abs(line13 - expected_line13) > TOLERANCE:
-            errors.append(
-                f"kmd_lines.line13 ({fmt(line13)}) should be max(0, -(line10+line11)) = {fmt(expected_line13)}"
-            )
+def build_xml(data: dict) -> str:
+    """Build the full vatDeclaration XML document as a string."""
+    regcode = str(data["regcode"])
+    year = int(data["year"])
+    month = int(data["month"])
+    dtype = int(data.get("declaration_type", 1))
+    version = compute_version(year, month)
+    body = data.get("declaration_body", {}) or {}
+    sales = data.get("sales_annex")
+    purchases = data.get("purchases_annex")
+    has_sales = bool((sales or {}).get("lines"))
+    has_purchases = bool((purchases or {}).get("lines"))
 
-    # Validate VD entries
-    for i, entry in enumerate(data.get("vd_entries", [])):
-        prefix = f"vd_entries[{i}]"
-        if not entry.get("customer_vat_number"):
-            errors.append(f"{prefix}: customer_vat_number is required")
-        if not entry.get("country_code") or len(str(entry.get("country_code", ""))) != 2:
-            errors.append(f"{prefix}: country_code must be a 2-letter ISO country code")
-        supply_type = entry.get("supply_type", "")
-        if supply_type not in VALID_SUPPLY_TYPES:
-            errors.append(f"{prefix}: supply_type must be G, S, or T (got '{supply_type}')")
-
-    # Validate VD reconciles with KMD Lines 3.1 / 3.2
-    if data.get("vd_entries") and lines:
-        vd_goods = sum(
-            Decimal(str(e.get("amount", 0)))
-            for e in data["vd_entries"]
-            if e.get("supply_type") in ("G", "T")
+    out = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        "<vatDeclaration>",
+        f"  <taxPayerRegCode>{esc(regcode)}</taxPayerRegCode>",
+    ]
+    if data.get("submitter_person_code"):
+        out.append(
+            f"  <submitterPersonCode>{esc(data['submitter_person_code'])}</submitterPersonCode>"
         )
-        vd_services = sum(
-            Decimal(str(e.get("amount", 0)))
-            for e in data["vd_entries"]
-            if e.get("supply_type") == "S"
+    out += [
+        f"  <year>{year}</year>",
+        f"  <month>{month}</month>",
+        f"  <declarationType>{dtype}</declarationType>",
+        f"  <version>{version}</version>",
+        "  <declarationBody>",
+        f"    <noSales>{xml_flag(not has_sales)}</noSales>",
+        f"    <noPurchases>{xml_flag(not has_purchases)}</noPurchases>",
+        f"    <sumPerPartnerSales>{xml_flag((sales or {}).get('sum_per_partner', True) if has_sales else False)}</sumPerPartnerSales>",
+        f"    <sumPerPartnerPurchases>{xml_flag((purchases or {}).get('sum_per_partner', True) if has_purchases else False)}</sumPerPartnerPurchases>",
+    ]
+    out += _body_xml(body)
+    out.append("  </declarationBody>")
+    out += _sales_annex_xml(sales)
+    out += _purchases_annex_xml(purchases)
+    out.append("</vatDeclaration>")
+    return "\n".join(out) + "\n"
+
+
+# --------------------------------------------------------------------------- #
+# CSV generation (KMD2 machine format — the primary artifact)
+# --------------------------------------------------------------------------- #
+def _row(fields: List[str]) -> str:
+    """Pad a field list to CSV_FIELDS and join with ';'."""
+    padded = list(fields) + [""] * (CSV_FIELDS - len(fields))
+    return ";".join(padded[:CSV_FIELDS])
+
+
+def _csv_body_value(body: dict, key: str) -> str:
+    """Render one declarationBody value for the CSV — blank when zero/absent."""
+    if key not in body or body[key] in (None, ""):
+        return ""
+    if key in INTEGER_ELEMENTS:
+        ival = int(dec(body[key]))
+        return str(ival) if ival != 0 else ""
+    value = q2(body[key])
+    return amount(value) if value != 0 else ""
+
+
+def build_csv(data: dict) -> str:
+    """
+    Build the KMD2 machine CSV: fixed 31-field rows, semicolon-separated, dot decimals,
+    TRUE/FALSE flags, CRLF line endings, no BOM. Row types:
+      header;{reg};{submitter};{year};{month};{declarationType}   — general part
+      {version};{noSales};{noPurchases};{sumSales};{sumPurch};<26 body values>  — main form
+      A;{buyerReg};{buyerName};{invNo};{invDate};{sum};{rate};{sumForRate};{sumInPeriod};{comments}
+      B;{sellerReg};{sellerName};{invNo};{invDate};{sumVat};{vatSum};{vatInPeriod};{comments}
+    """
+    regcode = str(data["regcode"])
+    year = int(data["year"])
+    month = int(data["month"])
+    dtype = int(data.get("declaration_type", 1))
+    version = compute_version(year, month)
+    submitter = str(data.get("submitter_person_code") or "")
+    body = data.get("declaration_body", {}) or {}
+    sales = data.get("sales_annex")
+    purchases = data.get("purchases_annex")
+    has_sales = bool((sales or {}).get("lines"))
+    has_purchases = bool((purchases or {}).get("lines"))
+
+    rows: List[str] = [
+        _row(["header", regcode, submitter, str(year), str(month), str(dtype)]),
+        _row(
+            [
+                version,
+                csv_flag(not has_sales),
+                csv_flag(not has_purchases),
+                csv_flag((sales or {}).get("sum_per_partner", True) if has_sales else False),
+                csv_flag((purchases or {}).get("sum_per_partner", True) if has_purchases else False),
+            ]
+            + [_csv_body_value(body, key) for key in BODY_ELEMENTS]
+        ),
+    ]
+
+    for line in (sales or {}).get("lines") or []:
+        rows.append(_row([
+            "A",
+            str(line.get("buyerRegCode", "") or ""),
+            str(line.get("buyerName", "") or ""),
+            str(line.get("invoiceNumber", "") or ""),
+            csv_date(line.get("invoiceDate")),
+            amount(line.get("invoiceSum", 0)),
+            str(line.get("taxRate", "") or ""),
+            amount(line["invoiceSumForRate"]) if line.get("invoiceSumForRate") not in (None, "") else "",
+            amount(line["sumForRateInPeriod"]) if line.get("sumForRateInPeriod") not in (None, "") else "",
+            str(line.get("comments", "") or ""),
+        ]))
+
+    for line in (purchases or {}).get("lines") or []:
+        rows.append(_row([
+            "B",
+            str(line.get("sellerRegCode", "") or ""),
+            str(line.get("sellerName", "") or ""),
+            str(line.get("invoiceNumber", "") or ""),
+            csv_date(line.get("invoiceDate")),
+            amount(line.get("invoiceSumVat", 0)),
+            amount(line["vatSum"]) if line.get("vatSum") not in (None, "") else "",
+            amount(line.get("vatInPeriod", 0)),
+            str(line.get("comments", "") or ""),
+        ]))
+
+    return "".join(row + "\r\n" for row in rows)
+
+
+# --------------------------------------------------------------------------- #
+# XSD validation
+# --------------------------------------------------------------------------- #
+def validate_xml_against_xsd(xml_text: str) -> Tuple[bool, str]:
+    """
+    Validate the XML against the bundled XSD using xmllint.
+
+    Returns (ok, message). If xmllint is not installed, returns (True, warning) so the
+    tool still runs in minimal environments. A genuine schema violation returns
+    (False, errors).
+    """
+    if not XSD_PATH.exists():
+        return False, f"bundled schema not found at {XSD_PATH}"
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".xml", encoding="utf-8", delete=False
+    ) as tmp:
+        tmp.write(xml_text)
+        tmp_path = tmp.name
+    try:
+        proc = subprocess.run(
+            ["xmllint", "--noout", "--schema", str(XSD_PATH), tmp_path],
+            capture_output=True, text=True,
         )
-        line3_1 = d(lines, "line3_1")
-        line3_2 = d(lines, "line3_2")
-        if abs(vd_goods - line3_1) > TOLERANCE:
+    except FileNotFoundError:
+        Path(tmp_path).unlink(missing_ok=True)
+        return True, ("WARNING: xmllint not found — XSD validation skipped. "
+                      "Install libxml2 (brew install libxml2) to validate output.")
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+    if proc.returncode == 0:
+        return True, "validates against vatdeclaration.xsd"
+    return False, (proc.stderr or proc.stdout or "unknown xmllint error").strip()
+
+
+# --------------------------------------------------------------------------- #
+# Output-format self-check (validation gate — check 1, BLOCK)
+# --------------------------------------------------------------------------- #
+_NUMERIC_RE = re.compile(r"^$|^\d+$|^-?\d+\.\d{2}$")  # empty | integer | 2-decimal (dot)
+
+
+def _numeric_ok(value: str) -> bool:
+    """A CSV monetary/count field must be empty, an integer, or a 2-decimal dot value."""
+    return bool(_NUMERIC_RE.match(value))
+
+
+def self_check_csv(csv_text: str, version: str) -> List[str]:
+    """
+    Mechanically re-validate the generated CSV against e-MTA's fixed-column spec, so a
+    malformed file never leaves the desk. Returns a list of BLOCK error strings.
+    """
+    errors: List[str] = []
+
+    if not csv_text.endswith("\r\n"):
+        errors.append("CSV must use CRLF line endings and end with CRLF")
+    if "﻿" in csv_text:
+        errors.append("CSV must not contain a BOM")
+
+    rows = [r for r in csv_text.split("\r\n") if r != ""]
+    if len(rows) < 2:
+        errors.append("CSV must have at least the header and declarationBody rows")
+        return errors
+
+    for i, row in enumerate(rows, start=1):
+        fields = row.split(";")
+        if len(fields) != CSV_FIELDS:
             errors.append(
-                f"VD goods total ({fmt(vd_goods)}) does not match kmd_lines.line3_1 ({fmt(line3_1)})"
+                f"CSV row {i} has {len(fields)} fields, expected {CSV_FIELDS} "
+                "(an embedded ';' in a name/number corrupts the fixed-column layout)"
             )
-        if abs(vd_services - line3_2) > TOLERANCE:
+
+    header = rows[0].split(";")
+    if header[0] != "header":
+        errors.append(f"CSV row 1 must start with 'header', got '{header[0]}'")
+
+    body = rows[1].split(";")
+    if body and body[0] != version:
+        errors.append(f"CSV row 2 version is '{body[0]}', expected '{version}'")
+    for idx in range(1, 5):  # noSales, noPurchases, sumPerPartnerSales, sumPerPartnerPurchases
+        if len(body) > idx and body[idx] not in ("TRUE", "FALSE"):
+            errors.append(f"CSV row 2 flag {idx} is '{body[idx]}', expected TRUE/FALSE")
+    for idx in range(5, len(body)):  # the 26 declarationBody values
+        if not _numeric_ok(body[idx]):
             errors.append(
-                f"VD services total ({fmt(vd_services)}) does not match kmd_lines.line3_2 ({fmt(line3_2)})"
+                f"CSV row 2 body value {idx - 4} ('{body[idx]}') is not a dot-decimal "
+                "amount (a comma decimal or a stray total-VAT column would land here)"
             )
+
+    # Annex rows: check the monetary positions use dot decimals.
+    monetary_positions = {"A": (5, 7, 8), "B": (5, 6, 7)}
+    for i, row in enumerate(rows[2:], start=3):
+        fields = row.split(";")
+        kind = fields[0]
+        if kind not in monetary_positions:
+            errors.append(f"CSV row {i} has unknown row type '{kind}' (expected A or B)")
+            continue
+        for pos in monetary_positions[kind]:
+            if pos < len(fields) and not _numeric_ok(fields[pos]):
+                errors.append(f"CSV row {i} field {pos + 1} ('{fields[pos]}') is not a dot-decimal amount")
 
     return errors
 
 
-def generate_kmd(data: dict, output_dir: Path) -> Path:
-    """Generate main KMD XML. Returns path of generated file."""
-    regcode = data["regcode"]
-    year = int(data["year"])
-    month = int(data["month"])
-    L = data.get("kmd_lines", {})
+def self_check_totals(data: dict) -> List[str]:
+    """
+    Recompute the derived figures and, when the caller supplies an expected value,
+    assert the return agrees (check 1 + check 7). Returns BLOCK error strings.
+    """
+    errors: List[str] = []
+    totals = compute_totals(data.get("declaration_body", {}) or {})
 
-    # Line 9 is reserved/unused — include as 0
-    lines_xml = [
-        ("Line1",   d(L, "line1")),
-        ("Line1_1", d(L, "line1_1")),
-        ("Line2",   d(L, "line2")),
-        ("Line2_1", d(L, "line2_1")),
-        ("Line3",   d(L, "line3")),
-        ("Line3_1", d(L, "line3_1")),
-        ("Line3_2", d(L, "line3_2")),
-        ("Line4",   d(L, "line4")),
-        ("Line4_1", d(L, "line4_1")),
-        ("Line5",   d(L, "line5")),
-        ("Line5_1", d(L, "line5_1")),
-        ("Line6",   d(L, "line6")),
-        ("Line7",   d(L, "line7")),
-        ("Line8",   d(L, "line8")),
-        ("Line10",  d(L, "line10")),
-        ("Line11",  d(L, "line11")),
-        ("Line12",  d(L, "line12")),
-        ("Line13",  d(L, "line13")),
-    ]
+    if totals["_line12"] > 0 and totals["_line13"] > 0:
+        errors.append(
+            f"line 12 (payable {totals['_line12']:.2f}) and line 13 "
+            f"(overpaid {totals['_line13']:.2f}) cannot both be non-zero"
+        )
 
-    xml_lines = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        f'<KMD xmlns="{NS_VAT}">',
-        f"  <TaxpayerRegCode>{esc(regcode)}</TaxpayerRegCode>",
-        "  <Period>",
-        f"    <Year>{year}</Year>",
-        f"    <Month>{month:02d}</Month>",
-        "  </Period>",
-    ]
-
-    for tag, value in lines_xml:
-        xml_lines.append(f"  <{tag}>{fmt(value)}</{tag}>")
-
-    xml_lines.append("</KMD>")
-
-    filename = f"KMD_{year}{month:02d}_{regcode}.xml"
-    output_path = output_dir / filename
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(xml_lines) + "\n")
-
-    return output_path
+    expected_payable = data.get("expected_vat_payable")
+    if expected_payable is not None and abs(q2(expected_payable) - totals["_line12"]) > TOLERANCE:
+        errors.append(
+            f"computed VAT payable (line 12) {totals['_line12']:.2f} does not match the "
+            f"expected {q2(expected_payable):.2f} — recheck the bases / inputVatTotal"
+        )
+    expected_overpaid = data.get("expected_vat_overpaid")
+    if expected_overpaid is not None and abs(q2(expected_overpaid) - totals["_line13"]) > TOLERANCE:
+        errors.append(
+            f"computed VAT overpaid (line 13) {totals['_line13']:.2f} does not match the "
+            f"expected {q2(expected_overpaid):.2f} — recheck the bases / inputVatTotal"
+        )
+    return errors
 
 
-def generate_kmdinf(data: dict, output_dir: Path) -> Path:
-    """Generate KMD INF annex XML. Returns path of generated file."""
-    regcode = data["regcode"]
-    year = int(data["year"])
-    month = int(data["month"])
-    inf = data.get("kmd_inf", {})
-    part_a = inf.get("part_a", [])
-    part_b = inf.get("part_b", [])
-
-    xml_lines = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        f'<KMDINF xmlns="{NS_VAT}">',
-        "  <Period>",
-        f"    <Year>{year}</Year>",
-        f"    <Month>{month:02d}</Month>",
-        "  </Period>",
-        "  <PartA>",
-    ]
-
-    for partner in part_a:
-        xml_lines += [
-            "    <Partner>",
-            f"      <RegCode>{esc(partner.get('reg_code', ''))}</RegCode>",
-            f"      <Name>{esc(partner.get('name', ''))}</Name>",
-            f"      <InvoiceCount>{int(partner.get('invoice_count', 0))}</InvoiceCount>",
-            f"      <TaxableAmount>{fmt(partner.get('taxable_amount', 0))}</TaxableAmount>",
-            f"      <VATAmount>{fmt(partner.get('vat_amount', 0))}</VATAmount>",
-            "    </Partner>",
-        ]
-
-    xml_lines.append("  </PartA>")
-    xml_lines.append("  <PartB>")
-
-    for partner in part_b:
-        xml_lines += [
-            "    <Partner>",
-            f"      <RegCode>{esc(partner.get('reg_code', ''))}</RegCode>",
-            f"      <Name>{esc(partner.get('name', ''))}</Name>",
-            f"      <InvoiceCount>{int(partner.get('invoice_count', 0))}</InvoiceCount>",
-            f"      <TaxableAmount>{fmt(partner.get('taxable_amount', 0))}</TaxableAmount>",
-            f"      <VATAmount>{fmt(partner.get('vat_amount', 0))}</VATAmount>",
-            "    </Partner>",
-        ]
-
-    xml_lines.append("  </PartB>")
-    xml_lines.append("</KMDINF>")
-
-    filename = f"KMDINF_{year}{month:02d}_{regcode}.xml"
-    output_path = output_dir / filename
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(xml_lines) + "\n")
-
-    return output_path
-
-
-def generate_vd(data: dict, output_dir: Path) -> Path:
-    """Generate EC Sales List (Form VD) XML. Returns path of generated file."""
-    regcode = data["regcode"]
-    year = int(data["year"])
-    month = int(data["month"])
-    vat_number = data.get("vat_number", f"EE{regcode}")
-    entries = data.get("vd_entries", [])
-
-    xml_lines = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        f'<VD xmlns="{NS_VAT}">',
-        "  <Period>",
-        f"    <Year>{year}</Year>",
-        f"    <Month>{month:02d}</Month>",
-        "  </Period>",
-        f"  <TaxpayerRegCode>{esc(regcode)}</TaxpayerRegCode>",
-        f"  <TaxpayerVATNumber>{esc(vat_number)}</TaxpayerVATNumber>",
-    ]
-
-    for entry in entries:
-        xml_lines += [
-            "  <Entry>",
-            f"    <CustomerVATNumber>{esc(entry.get('customer_vat_number', ''))}</CustomerVATNumber>",
-            f"    <CountryCode>{esc(entry.get('country_code', ''))}</CountryCode>",
-            f"    <SupplyType>{esc(entry.get('supply_type', ''))}</SupplyType>",
-            f"    <Amount>{fmt(entry.get('amount', 0))}</Amount>",
-            "  </Entry>",
-        ]
-
-    xml_lines.append("</VD>")
-
-    filename = f"VD_{year}{month:02d}_{regcode}.xml"
-    output_path = output_dir / filename
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(xml_lines) + "\n")
-
-    return output_path
-
-
-def main():
+# --------------------------------------------------------------------------- #
+# Main
+# --------------------------------------------------------------------------- #
+def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Generate Estonian VAT declaration XML files for EMTA"
+        description="Generate the Estonian VAT return (KMD2 machine CSV + vatDeclaration XML)"
     )
     parser.add_argument("--input", required=True, help="Path to input JSON file")
-    parser.add_argument(
-        "--output", default=".", help="Output directory (default: current directory)"
-    )
+    parser.add_argument("--output", default=".", help="Output directory (default: .)")
     args = parser.parse_args()
 
-    with open(args.input, encoding="utf-8") as f:
-        data = json.load(f)
+    with open(args.input, encoding="utf-8") as fh:
+        data = json.load(fh)
 
     errors = validate(data)
     if errors:
         print("VALIDATION ERRORS:", file=sys.stderr)
-        for e in errors:
-            print(f"  - {e}", file=sys.stderr)
+        for err in errors:
+            print(f"  - {err}", file=sys.stderr)
         sys.exit(1)
+
+    regcode = str(data["regcode"])
+    year = int(data["year"])
+    month = int(data["month"])
+    stem = f"{year}{month:02d}_{regcode}"
+
+    # Build both artifacts, then run the output-format gate (check 1) BEFORE writing
+    # anything. Any BLOCK error means no files are written — a malformed declaration
+    # never reaches e-MTA.
+    version = compute_version(year, month)
+    xml_text = build_xml(data)
+    csv_text = build_csv(data)
+
+    xsd_ok, xsd_message = validate_xml_against_xsd(xml_text)
+    block: List[str] = []
+    if not xsd_ok:
+        block.append(f"XML does not validate against vatdeclaration.xsd: {xsd_message}")
+    block += self_check_csv(csv_text, version)
+    block += self_check_totals(data)
+    if block:
+        print("OUTPUT-FORMAT GATE FAILED (BLOCK) — no files written:", file=sys.stderr)
+        for err in block:
+            print(f"  - {err}", file=sys.stderr)
+        sys.exit(1)
+    message = xsd_message
 
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = output_dir / f"KMD_{stem}.csv"
+    xml_path = output_dir / f"vatDeclaration_{stem}.xml"
+    # CSV: bytes, no BOM, CRLF already embedded. XML: UTF-8.
+    csv_path.write_bytes(csv_text.encode("utf-8"))
+    xml_path.write_text(xml_text, encoding="utf-8")
 
-    kmd_path = generate_kmd(data, output_dir)
-    print(f"Generated: {kmd_path}")
+    body = data.get("declaration_body", {}) or {}
+    totals = compute_totals(body)
+    print(f"Generated (PRIMARY):   {csv_path}")
+    print(f"Generated (secondary): {xml_path}")
+    print(f"Format gate: PASS ({message}; CSV 31-field rows, dot decimals, TRUE/FALSE, CRLF)")
+    print(f"\nKMD {year}/{month:02d} — reg code {regcode} (version {version})")
+    print(f"  Total VAT   (line 4):  EUR {totals['_line4']:.2f}  [computed by e-MTA]")
+    print(f"  Input VAT   (line 5):  EUR {q2(body.get('inputVatTotal', 0)):.2f}")
+    if totals["_line12"] > 0:
+        print(f"  VAT PAYABLE (line 12): EUR {totals['_line12']:.2f}  [computed by e-MTA]")
+    elif totals["_line13"] > 0:
+        print(f"  VAT OVERPAID(line 13): EUR {totals['_line13']:.2f}  [computed by e-MTA]")
+    else:
+        print("  Net VAT: EUR 0.00")
 
-    inf = data.get("kmd_inf", {})
-    if inf.get("part_a") or inf.get("part_b"):
-        inf_path = generate_kmdinf(data, output_dir)
-        print(f"Generated: {inf_path}")
+    for warning in reverse_charge_warnings(data):
+        print(f"\nNOTE: {warning}")
 
-    if data.get("vd_entries"):
-        vd_path = generate_vd(data, output_dir)
-        print(f"Generated: {vd_path}")
-
-    # Print KMD summary
-    L = data.get("kmd_lines", {})
-    line10 = d(L, "line10")
-    line12 = d(L, "line12")
-    line13 = d(L, "line13")
-
-    print(f"\nKMD Summary:")
-    print(f"  Output VAT (Line 1.1 + 2.1): EUR {fmt(d(L, 'line1_1') + d(L, 'line2_1'))}")
-    print(f"  Input VAT  (Line 4):          EUR {fmt(d(L, 'line4'))}")
-    print(f"  Net VAT    (Line 10):         EUR {fmt(line10)}")
-    if line12 > Decimal("0"):
-        print(f"  VAT PAYABLE (Line 12):        EUR {fmt(line12)}")
-    elif line13 > Decimal("0"):
-        print(f"  VAT OVERPAID (Line 13):       EUR {fmt(line13)}")
-    print(f"\nReady for upload to e-MTA portal (maasikas.emta.ee)")
-    print(f"Filing deadline: 20th of the following month")
+    print("\nUpload the CSV at maasikas.emta.ee (or the XML). Deadline: 20th of next month.")
 
 
 if __name__ == "__main__":

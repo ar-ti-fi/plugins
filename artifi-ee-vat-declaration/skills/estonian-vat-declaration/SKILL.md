@@ -15,13 +15,15 @@ Before starting, ask the user for:
 
 ## Mandatory Checkpoints
 
-You MUST verify each checkpoint before proceeding. If a checkpoint fails, STOP and inform the user.
+Before generating the return you MUST run the **pre-close validation gate** — the seven
+checks in **references/validation-checklist.md**, each rated BLOCK or WARN. If any BLOCK
+is open, STOP and do not generate. The individual checkpoints below feed that gate:
 
-- **CP1**: All transactions for the period are posted (no drafts)
-- **CP2**: All transaction lines have tax codes assigned
-- **CP3**: KMD calculations balance (output VAT - input VAT = net VAT)
-- **CP4**: KMD INF totals reconcile with KMD
-- **CP5**: EC Sales List reconciles with KMD Lines 3.1 and 3.2
+- **CP1**: All transactions for the period are posted (no drafts) — gate check 2
+- **CP2**: All transaction lines have tax codes assigned — gate check 4
+- **CP3**: KMD calculations balance and tie to the GL — gate checks 1, 5, 7
+- **CP4**: KMD INF totals reconcile and respect the €1,000 threshold — gate check 6
+- **CP5**: EC Sales List reconciles with KMD lines 3.1 / 3.2 — gate check 7
 
 ## Workflow Steps
 
@@ -93,39 +95,53 @@ Check that all transaction lines have valid tax codes:
 
 **CP2 checkpoint**: If lines are missing tax codes, list them with transaction number, date, and amount. Ask the user to assign tax codes before continuing.
 
-### Step 4: Calculate KMD Lines 1-13
+### Step 3.5: Run the pre-close validation gate
 
-Using the tax code classification from Step 1 and transactions from Step 2, calculate each KMD line following the formulas in **references/kmd-form-structure.md**:
+Run **every** check in **references/validation-checklist.md** and emit the single
+pass/fail report (one row per check, PASS / WARN / BLOCK, with the offending records and
+the fix). This catches — before generation — payments without a document (check 2),
+cut-off errors (check 3), tax-code/jurisdiction problems (check 4), GL mismatches
+(check 5), and INF-threshold inconsistencies (check 6).
 
-**Output VAT (Sales side):**
-- Line 1: Sum taxable base of sales with 24% rate codes
-- Line 1.1: Sum VAT amount from those transactions (or Line 1 x 0.24)
-- Line 2: Sum taxable base of sales with 13%/9% rate codes
-- Line 2.1: Sum VAT amount from reduced-rate transactions
-- Line 3: Sum of zero-rated exports (non-EU customers)
-- Line 3.1: Sum of intra-community goods supplies
-- Line 3.2: Sum of intra-community services supplies
+- **If any BLOCK is open: STOP. Present the report and do not proceed to Step 4.**
+- WARN items are listed for the user to confirm but do not stop the workflow.
+- Check 1 (output format) and the arithmetic in check 7 are enforced again by
+  `generate_kmd.py` at Step 9, which refuses to write files on any format defect.
 
-**Input VAT (Purchase side):**
-- Line 4: Sum of recoverable input VAT from all purchases
-- Line 4.1: Subset of Line 4 posted to fixed asset accounts (1500-1599)
+### Step 4: Calculate the KMD main form (declarationBody)
 
-**Reverse charge / IC acquisitions:**
-- Line 5: IC acquisition of goods (taxable base)
-- Line 5.1: IC acquisition of services (taxable base)
-- Line 6: Domestic reverse charge — goods
-- Line 7: Domestic reverse charge — real estate / scrap metal
+Using the tax code classification from Step 1 and transactions from Step 2, compute the
+KMD2 `declaration_body` values following **references/kmd-form-structure.md**. These are
+taxable **bases** by rate (except the input-VAT lines, which are VAT amounts). Use the
+**real KMD2 element names** — NOT Line1_1…Line13.
 
-**Adjustments and totals:**
-- Line 8: Credit notes, corrections, bad debt relief (net adjustment)
-- Line 10: (Line 1.1 + Line 2.1) - Line 4 + Line 8
-- Line 11: Import VAT (from customs declarations)
-- Line 12: VAT payable = max(0, Line 10 + Line 11)
-- Line 13: VAT overpaid = max(0, -(Line 10 + Line 11))
+**Output side — bases by rate:**
+- `transactions24` (line 1): base of sales at 24% (standard rate from 07.2025)
+- `transactions22` / `transactions20`: legacy standard-rate bases (22% in 2024, 20% ≤2023)
+- `transactions9` (line 2): base at 9%; `transactions5` (2¹) at 5%; `transactions13` (2²) at 13%
+- `transactionsZeroVat` (line 3): zero-rated total
+- `euSupplyInclGoodsAndServicesZeroVat` (3.1) + `euSupplyGoodsZeroVat` (3.1.1): intra-Community supplies
+- `exportZeroVat` (3.2): exports to non-EU
 
-**CP3 checkpoint**: Verify Line 12 and Line 13 are mutually exclusive. Verify Line 10 formula is correct.
+**Input side — VAT amounts:**
+- `inputVatTotal` (line 5): total recoverable input VAT from purchases
+- `importVat` (5.1), `fixedAssetsVat` (5.2), `carsVat`/`carsPartialVat` (5.3/5.4): subsets of line 5
 
-Present the completed KMD form to the user in a table.
+**Reverse charge / acquisitions (bases):**
+- `euAcquisitionsGoodsAndServicesTotal` (line 6): goods + services acquired from **EU** suppliers; `euAcquisitionsGoods` (6.1) is the goods subset
+- `acquisitionOtherGoodsAndServicesTotal` (line 7): services received from **non-EU** suppliers + domestic reverse charge
+
+**Exempt / adjustments:**
+- `supplyExemptFromTax` (line 8)
+- `adjustmentsPlus` (line 10) / `adjustmentsMinus` (line 11): non-negative corrections
+
+**Do NOT compute total VAT (line 4), VAT due (line 12) or overpaid (line 13)** — e-MTA
+derives them from the bases + `inputVatTotal`, and there are no XSD elements for them.
+`generate_kmd.py` computes them for the CSV / summary automatically.
+
+**CP3 checkpoint**: Present the completed main form. Sanity-check that
+`Σ(base × rate) − inputVatTotal` gives the expected net VAT (payable if positive,
+refundable if negative).
 
 ### Step 5: Prepare KMD INF Annex
 
@@ -137,12 +153,19 @@ Following **references/kmd-inf-annex.md**:
        {"legal_entity_id": ID, "transaction_type": "ar_invoice"},
        date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"}})
    ```
-   Collect: partner registration code, name, invoice count, taxable amount, VAT amount.
+   Collect per partner: registration code, name, taxable amount (excl. VAT), tax rate.
+   These become `sales_annex.lines` entries (`buyerRegCode`, `buyerName`, `invoiceSum`,
+   `taxRate`, `sumForRateInPeriod`).
 
-2. **Part B (Purchases)**: Group AP invoices by vendor. For each vendor where total > EUR 1,000:
-   Same approach, filtering for `transaction_type = "ap_invoice"`.
+2. **Part B (Purchases)**: Group AP invoices by vendor. For each vendor where total
+   (incl. VAT) > EUR 1,000: collect registration code, name, total incl. VAT, input VAT
+   for the period. These become `purchases_annex.lines` entries (`sellerRegCode`,
+   `sellerName`, `invoiceSumVat`, `vatInPeriod`).
 
 3. Validate registration codes (8-digit format for Estonian partners).
+
+When no partner reaches the EUR 1,000 threshold, omit the annex — the generator sets
+`noSales` / `noPurchases` to `true`.
 
 **CP4 checkpoint**: Verify Part A totals are consistent with KMD output VAT lines. Verify Part B totals are consistent with total AP invoice base.
 
@@ -165,9 +188,9 @@ Compare calculated KMD amounts with GL account balances:
 generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD"})
 ```
 
-1. VAT Output account balance should match total output VAT (Lines 1.1 + 2.1)
-2. VAT Input account balance should match Line 4
-3. Net VAT payable/receivable should match Line 12 or Line 13
+1. VAT Output account balance should match the computed total output VAT (line 4)
+2. VAT Input account balance should match `inputVatTotal` (line 5)
+3. Net VAT payable/receivable should match line 12 or line 13
 
 If there are differences, identify the cause (timing, manual entries, rounding) and present to the user.
 
@@ -186,21 +209,20 @@ submit("tax_return", "create", {
         "year": <YYYY>,
         "month": <MM>,
         "regcode": "<business registry code>",
-        "kmd_lines": {
-            "line_1": <Line 1>, "line_1_1": <Line 1.1>,
-            "line_2": <Line 2>, "line_2_1": <Line 2.1>,
-            "line_3": <Line 3>, "line_3_1": <Line 3.1>, "line_3_2": <Line 3.2>,
-            "line_4": <Line 4>, "line_4_1": <Line 4.1>,
-            "line_5": <Line 5>, "line_5_1": <Line 5.1>,
-            "line_6": <Line 6>, "line_7": <Line 7>, "line_8": <Line 8>,
-            "line_10": <Line 10>, "line_11": <Line 11>,
-            "line_12": <Line 12>, "line_13": <Line 13>
+        "declaration_body": {
+            "transactions24": <base>, "transactions22": <base>, "transactions20": <base>,
+            "transactions9": <base>, "transactions5": <base>, "transactions13": <base>,
+            "transactionsZeroVat": <base>,
+            "euSupplyInclGoodsAndServicesZeroVat": <base>, "euSupplyGoodsZeroVat": <base>,
+            "exportZeroVat": <base>,
+            "inputVatTotal": <vat>, "importVat": <vat>, "fixedAssetsVat": <vat>,
+            "euAcquisitionsGoodsAndServicesTotal": <base>, "euAcquisitionsGoods": <base>,
+            "acquisitionOtherGoodsAndServicesTotal": <base>,
+            "supplyExemptFromTax": <base>,
+            "adjustmentsPlus": <amount>, "adjustmentsMinus": <amount>
         },
-        "kmd_inf": {
-            "part_a": [{"reg_code": "...", "name": "...", "invoices": <amount>, "vat": <amount>}, ...],
-            "part_b": [{"reg_code": "...", "name": "...", "invoices": <amount>, "vat": <amount>}, ...]
-        },
-        "vd_entries": [{"vat_number": "...", "name": "...", "goods": <amount>, "services": <amount>, "triangular": <amount>}, ...],
+        "sales_annex": {"sum_per_partner": true, "lines": [{"buyerRegCode": "...", "buyerName": "...", "invoiceSum": <amount>, "taxRate": "24"}, ...]},
+        "purchases_annex": {"sum_per_partner": true, "lines": [{"sellerRegCode": "...", "sellerName": "...", "invoiceSumVat": <amount>, "vatInPeriod": <amount>}, ...]},
         "sales_summary": {
             "standard_rate": {"rate": 24, "net_sales": <amount>, "vat_amount": <amount>},
             "reduced_rate": {"rate": 13, "net_sales": <amount>, "vat_amount": <amount>},
@@ -209,9 +231,9 @@ submit("tax_return", "create", {
         },
         "purchases_summary": {"total_purchases": <amount>, "input_vat_recoverable": <amount>},
         "vat_calculation": {
-            "total_output_vat": <Line 1.1 + Line 2.1>,
-            "total_input_vat": <Line 4>,
-            "net_vat_due": <Line 12 or negative of Line 13>
+            "total_output_vat": <computed total VAT, line 4>,
+            "total_input_vat": <inputVatTotal, line 5>,
+            "net_vat_due": <line 12 payable, or negative of line 13 overpaid>
         },
         "reverse_charge_transactions": {"count": <n>, "total_value": <amount>, "vat_self_assessed": <amount>},
         "validation_results": {"cp1": true, "cp2": true, "cp3": true, "cp4": true, "cp5": true},
@@ -241,9 +263,9 @@ submit("transaction", "post", {
     "description": "VAT closing - KMD <YYYY>/<MM>",
     "transaction_date": "<last day of reporting period>",
     "lines": [
-        { "account_number": "<VAT Output account>", "debit": <Line 1.1 + Line 2.1>, "credit": 0 },
-        { "account_number": "<VAT Input account>", "debit": 0, "credit": <Line 4> },
-        { "account_number": "<VAT Payable account>", "debit": 0, "credit": <Line 12> }
+        { "account_number": "<VAT Output account>", "debit": <total output VAT, line 4>, "credit": 0 },
+        { "account_number": "<VAT Input account>", "debit": 0, "credit": <inputVatTotal, line 5> },
+        { "account_number": "<VAT Payable account>", "debit": 0, "credit": <net VAT payable, line 12> }
     ]
 })
 ```
@@ -256,9 +278,9 @@ submit("transaction", "post", {
     "description": "VAT closing - KMD <YYYY>/<MM> (overpaid)",
     "transaction_date": "<last day of reporting period>",
     "lines": [
-        { "account_number": "<VAT Output account>", "debit": <Line 1.1 + Line 2.1>, "credit": 0 },
-        { "account_number": "<VAT Receivable account>", "debit": <Line 13>, "credit": 0 },
-        { "account_number": "<VAT Input account>", "debit": 0, "credit": <Line 4> }
+        { "account_number": "<VAT Output account>", "debit": <total output VAT, line 4>, "credit": 0 },
+        { "account_number": "<VAT Receivable account>", "debit": <net VAT overpaid, line 13>, "credit": 0 },
+        { "account_number": "<VAT Input account>", "debit": 0, "credit": <inputVatTotal, line 5> }
     ]
 })
 ```
@@ -271,7 +293,7 @@ Tell the user: "VAT closing journal entry posted. Net VAT {payable/overpaid}: EU
 
 Compile the final declaration package:
 
-1. **KMD Form Summary** — All lines 1-13 in a clear table
+1. **KMD Form Summary** — All main-form values in a clear table
 2. **KMD INF** — Part A (sales partners) and Part B (purchase partners)
 3. **EC Sales List** — Form VD data (if applicable)
 4. **Reconciliation** — GL vs KMD comparison
@@ -296,7 +318,7 @@ submit("tax_return", "file", {
 ## Output Format
 
 Present the final output as a structured document with clear sections:
-- KMD form table (Lines 1-13 with amounts)
+- KMD main-form table (KMD2 element values)
 - KMD INF partner tables (Part A and Part B)
 - EC Sales List table (if applicable)
 - Reconciliation summary

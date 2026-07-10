@@ -1,230 +1,137 @@
 ---
 name: prepare-vat-declaration
-description: Prepare the monthly Estonian VAT declaration (KMD) with KMD INF annex and EC Sales List for EMTA filing, using the generate_kmd.py script for deterministic XML generation.
+description: Prepare and validate the monthly Estonian VAT return (KMD) for e-MTA — runs the pre-close validation gate, then generates the KMD2 machine CSV + XSD-validated XML and the KMD INF annex. Hands off the EC Sales List to /prepare-ec-sales-list when intra-EU supplies exist. Run with `validate` to check only.
 ---
 
-# Prepare Estonian VAT Declaration (KMD)
+# Estonian VAT Return (KMD)
 
-Execute the full monthly VAT declaration workflow and generate XML files ready for EMTA upload.
-
-**How it works:** Instead of generating XML by hand (which risks namespace errors), this command follows the SKILL.md workflow to calculate KMD lines, then builds a compact JSON and runs `scripts/generate_kmd.py` — a Python script that produces validated KMD, KMD INF, and Form VD XML files.
+The **single** command for the monthly VAT close. It runs the pre-close validation gate,
+and only if nothing is blocking does it generate the filing. Everything — the KMD main
+form, KMD INF A/B, and the EC Sales List (Form VD) — happens here.
 
 ## Usage
 
 ```
-/artifi-ee:prepare-vat-declaration
+/artifi-ee:prepare-vat-declaration            # full run: gate → generate → file
+/artifi-ee:prepare-vat-declaration validate   # run the gate only, then stop
 ```
+
+`validate` runs Phases 1–3 (the gate) and stops with the pass/fail report — nothing is
+generated. Use it to check early, or to re-check after corrections.
 
 ## Prerequisites
 
-- All transactions for the period must be posted (no drafts)
-- All transaction lines must have tax codes assigned
-- Python 3.9+ available (`python3 --version`)
+- All transactions for the period posted (no drafts); all lines have tax codes.
+- Python 3.9+ available (`python3 --version`).
 
-## Steps 1–7: Follow the SKILL.md Workflow
+---
 
-Follow all steps in **skills/estonian-vat-declaration/SKILL.md** to:
-1. Discover and classify tax codes (property-based, NOT hardcoded names)
-2. Fetch all posted transactions for the period
-3. Verify all lines have tax codes (CP1, CP2)
-4. Calculate KMD Lines 1-13
-5. Aggregate KMD INF partners (threshold: EUR 1,000)
-6. Identify EC Sales List entries (IC supplies)
-7. Reconcile VAT GL accounts (CP3, CP4, CP5)
+## Phase 1 — Gather (SKILL steps 1–3)
 
-## Step 8: Build KMD Data JSON
+Follow **skills/estonian-vat-declaration/SKILL.md**:
+1. Discover & classify tax codes (property-based — never hardcode names).
+2. Fetch all posted transactions for the period (AR/AP invoices, credit notes, journals).
+3. Verify every line has a valid tax code.
 
-After all SKILL.md calculations are complete, build the input JSON for the script.
+## Phase 2 — Pre-close validation gate (BLOCK / WARN)
 
-**JSON structure** (see `scripts/input_schema_kmd.json` for full example):
+Run **every** check in **skills/estonian-vat-declaration/references/validation-checklist.md**
+and emit the single pass/fail report:
+
+1. Output-format validation — enforced by `generate_kmd.py` in Phase 5 (listed here for completeness)
+2. Completeness — payments without a document — **BLOCK**
+3. Period basis / cut-off — **WARN**
+4. Tax-code coverage & jurisdiction sanity — **BLOCK** on missing, **WARN** on mismatch
+5. GL tie-out vs. the trial balance — **BLOCK** on material difference
+6. INF threshold / annex consistency — **BLOCK**
+7. Arithmetic / form rules — **BLOCK**
+
+**If any BLOCK is open: STOP. Print the report and the fix list. Do not generate.**
+WARN items are listed for the reviewer to confirm but do not stop the run.
+
+> **If invoked as `validate`: stop here** and present the report. Do not proceed.
+
+## Phase 3 — Build the KMD data (SKILL steps 4–5)
+
+Once the gate is green (no open BLOCK):
+
+- Compute `declaration_body` with **real KMD2 element names** (bases by rate +
+  `inputVatTotal` + reverse-charge lines 6/7). Do **not** supply total VAT / line 12 /
+  line 13 — e-MTA computes them.
+- Aggregate KMD INF partners (threshold EUR 1,000) into `sales_annex` / `purchases_annex`.
+
+Build the input JSON (see `scripts/input_schema_kmd.json` for the full example):
 
 ```json
 {
   "regcode": "REGCODE",
-  "vat_number": "EEXXXXXXXXXX",
-  "year": YYYY,
-  "month": MM,
-  "kmd_lines": {
-    "line1":   100000.00,
-    "line1_1":  24000.00,
-    "line2":     5000.00,
-    "line2_1":    650.00,
-    "line3":    10000.00,
-    "line3_1":  15000.00,
-    "line3_2":   8500.00,
-    "line4":    18000.00,
-    "line4_1":   5000.00,
-    "line5":        0.00,
-    "line5_1":      0.00,
-    "line6":        0.00,
-    "line7":        0.00,
-    "line8":        0.00,
-    "line10":    6650.00,
-    "line11":       0.00,
-    "line12":    6650.00,
-    "line13":       0.00
+  "submitter_person_code": null,
+  "year": YYYY, "month": MM, "declaration_type": 1,
+  "input_vat_full_deduction": true,
+  "expected_vat_payable": 138.07,
+  "declaration_body": {
+    "transactions24": 910.00, "inputVatTotal": 80.33,
+    "euAcquisitionsGoodsAndServicesTotal": 36.64,
+    "acquisitionOtherGoodsAndServicesTotal": 50.00
   },
-  "kmd_inf": {
-    "part_a": [
-      {"reg_code": "87654321", "name": "Customer OÜ", "invoice_count": 5, "taxable_amount": 5000.00, "vat_amount": 1200.00}
-    ],
-    "part_b": [
-      {"reg_code": "11223344", "name": "Vendor AS", "invoice_count": 3, "taxable_amount": 3000.00, "vat_amount": 720.00}
-    ]
-  },
-  "vd_entries": [
-    {"customer_vat_number": "FI12345678", "country_code": "FI", "supply_type": "G", "amount": 15000.00},
-    {"customer_vat_number": "DE987654321", "country_code": "DE", "supply_type": "S", "amount": 8500.00}
-  ]
+  "sales_annex": {"sum_per_partner": false, "lines": [ ... ]},
+  "purchases_annex": {"sum_per_partner": false, "lines": [ ... ]}
 }
 ```
 
-**CRITICAL formulas to verify BEFORE writing JSON:**
-- `line10 = (line1_1 + line2_1) - line4 + line8`
-- `line12 = max(0, line10 + line11)` — VAT payable
-- `line13 = max(0, -(line10 + line11))` — VAT overpaid
-- Lines 12 and 13 are mutually exclusive (only one can be non-zero)
-- VD goods total (G + T entries) must equal `line3_1`
-- VD services total (S entries) must equal `line3_2`
-- Omit `vd_entries` key entirely if no intra-community supplies exist
+- Pass `expected_vat_payable` (or `expected_vat_overpaid`) — the figure you derived from
+  the GL tie-out — so the generator asserts its computation matches (check 1).
+- Set `input_vat_full_deduction: false` if the taxpayer's input VAT is only partly
+  deductible; the generator then warns that the reverse charge does not net out.
+- Omit an annex entirely when no partner reaches EUR 1,000 (the generator sets
+  `noSales` / `noPurchases` = true).
 
-Write this JSON to a temporary file, e.g. `/tmp/kmd_data_{REGCODE}_{YYYYMM}.json`.
+## Phase 4 — EC Sales List (Form VD) hand-off, only if intra-EU B2B supplies exist
 
-## Step 9: Run the Generator Script
+Check whether the period has zero-rated supplies to EU VAT-registered customers
+(KMD lines 3.1 / 3.2 non-zero). If so, the **EC Sales List (Form VD)** is due — a
+**separate** e-MTA declaration with its own format. Tell the user to run
+**`/artifi-ee:prepare-ec-sales-list`** for it (it reconciles goods total = line 3.1,
+services total = line 3.2). If there are no IC supplies, state that Form VD is not
+required. Form VD is intentionally its own command because it is a distinct filing, not
+part of the KMD2 dataset.
 
-Find the plugin's scripts directory and run:
+## Phase 5 — Generate
 
 ```bash
-# The script is at: plugins/artifi-ee-vat-declaration/scripts/generate_kmd.py
-python3 generate_kmd.py \
-  --input /tmp/kmd_data_{REGCODE}_{YYYYMM}.json \
-  --output {OUTPUT_DIR}
+# scripts/generate_kmd.py  (find with: find ~ -name generate_kmd.py -path "*/artifi-ee-vat-declaration/*")
+python3 generate_kmd.py --input /tmp/kmd_data_{REGCODE}_{YYYYMM}.json --output {OUTPUT_DIR}
 ```
 
-The script will:
-- Validate Line 10 formula and Lines 12/13 mutual exclusion (exits with error if any fail)
-- Validate VD totals reconcile with Lines 3.1/3.2
-- Generate `KMD_YYYYMM_{REGCODE}.xml`
-- Generate `KMDINF_YYYYMM_{REGCODE}.xml` (if part_a or part_b have entries)
-- Generate `VD_YYYYMM_{REGCODE}.xml` (only if vd_entries present)
-- Print paths of generated files and a KMD summary
+The script re-runs the **output-format gate** (check 1) on its own output and **refuses
+to write files** on any failure: it validates the XML against the bundled
+`vatdeclaration.xsd`, mechanically checks the CSV (31 fields/row, correct version, dot
+decimals, TRUE/FALSE, CRLF), and asserts the derived figures (incl. any `expected_*`).
+On success it writes:
 
-**If the script is not found**, locate it with:
-```bash
-find ~ -name "generate_kmd.py" -path "*/artifi-ee-vat-declaration/*" 2>/dev/null
-```
+- `KMD_YYYYMM_{REGCODE}.csv` — KMD2 machine CSV (fixed 31-field rows), **primary**.
+- `vatDeclaration_YYYYMM_{REGCODE}.xml` — full KMD2 XML (main form + INF A/B), secondary.
 
-## Step 10: Submit Tax Return to ERP
+## Phase 6 — Record & post to the ERP (SKILL steps 8–9)
 
-Store the KMD calculation results in the ERP. Use the same JSON data from Step 8, structured as `return_data`:
+- `submit("tax_return", "create", …)` with `return_data.declaration_body` (+ annexes,
+  summaries). Report the `tax_return_id`.
+- Post the VAT closing journal entry (net to VAT Payable / Receivable).
 
-```
-submit("tax_return", "create", {
-    "legal_entity_id": <entity_id>,
-    "reporting_period_id": <period_id>,
-    "tax_authority_id": <EMTA authority id>,
-    "return_type": "vat_return",
-    "return_data": {
-        "form_code": "KMD",
-        "year": <YYYY>, "month": <MM>,
-        "regcode": "<REGCODE>",
-        "kmd_lines": { ... },            // Same data used for generate_kmd.py
-        "kmd_inf": { "part_a": [...], "part_b": [...] },
-        "vd_entries": [...],
-        "sales_summary": { ... },
-        "purchases_summary": { ... },
-        "vat_calculation": {
-            "total_output_vat": <Line 1.1 + Line 2.1>,
-            "total_input_vat": <Line 4>,
-            "net_vat_due": <Line 12 or negative of Line 13>
-        },
-        "validation_results": { "cp1": true, "cp2": true, "cp3": true, "cp4": true, "cp5": true },
-        "filing_instructions": {
-            "form": "KMD + KMD INF + Form VD",
-            "filing_method": "e-MTA XML upload",
-            "portal_url": "https://maasikas.emta.ee",
-            "due_date": "<YYYY-MM-20>"
-        }
-    }
-})
-```
+## Phase 7 — File & confirm
 
-Report the `tax_return_id` to the user. The return is now viewable at Admin Dashboard → Tax → Returns.
+1. Log in to **e-MTA** (maasikas.emta.ee), Declarations → KMD, select the period.
+2. "Laadi fail" → upload `KMD_YYYYMM_{REGCODE}.csv` (or the XML — both carry the main
+   form and the INF partners). If Form VD applies, file it separately.
+3. Portal validates → sign digitally → submit. **Deadline: 20th of the following month.**
+4. After filing: `submit("tax_return", "file", {"return_id": …, "confirmation_number": …})`.
 
-## Step 11: Post VAT Closing Journal Entry
-
-Post a journal entry to reclassify VAT accounts. VAT Output/Input are already posted per-transaction — this entry moves the net balance to a VAT Payable (or Receivable) account.
-
-**If Line 12 > 0 (net VAT payable):**
-```
-submit("transaction", "post", {
-    "transaction_type_code": "GL_JOURNAL",
-    "legal_entity_id": <entity_id>,
-    "description": "VAT closing - KMD <YYYY>/<MM>",
-    "transaction_date": "<last day of reporting period>",
-    "lines": [
-        { "account_number": "<VAT Output>", "debit": <Line 1.1 + Line 2.1>, "credit": 0 },
-        { "account_number": "<VAT Input>", "debit": 0, "credit": <Line 4> },
-        { "account_number": "<VAT Payable>", "debit": 0, "credit": <Line 12> }
-    ]
-})
-```
-
-**If Line 13 > 0 (VAT overpaid):**
-```
-submit("transaction", "post", {
-    "transaction_type_code": "GL_JOURNAL",
-    "legal_entity_id": <entity_id>,
-    "description": "VAT closing - KMD <YYYY>/<MM> (overpaid)",
-    "transaction_date": "<last day of reporting period>",
-    "lines": [
-        { "account_number": "<VAT Output>", "debit": <Line 1.1 + Line 2.1>, "credit": 0 },
-        { "account_number": "<VAT Receivable>", "debit": <Line 13>, "credit": 0 },
-        { "account_number": "<VAT Input>", "debit": 0, "credit": <Line 4> }
-    ]
-})
-```
-
-Report: "VAT closing journal entry posted. Net VAT {payable/overpaid}: EUR {amount}."
-
-## Step 12: Report Results
-
-After all steps complete, report to the user:
-- Paths of all generated XML files
-- KMD summary (output VAT, input VAT, net VAT, payable/overpaid)
-- Tax return ID (from Step 10) with link to Admin Dashboard
-- Journal entry posted (from Step 11)
-- Any validation errors printed by the script
-- Confirmation that files are ready for upload
-
-## Step 13: Filing Instructions
-
-1. Log in to **e-MTA** at maasikas.emta.ee with ID-card or Smart-ID
-2. Navigate to **Declarations** → **KMD** → Create new for the period
-3. Upload `KMD_YYYYMM_{REGCODE}.xml`
-4. Upload `KMDINF_YYYYMM_{REGCODE}.xml` as the INF annex
-5. If Form VD was generated, upload `VD_YYYYMM_{REGCODE}.xml` separately under EC Sales List
-6. The portal will validate — if errors occur, paste them here to debug
-7. Sign digitally and submit
-8. **Deadline**: 20th of the following month
-
-After filing, mark the return as filed:
-```
-submit("tax_return", "file", {
-    "return_id": <tax_return_id from Step 10>,
-    "confirmation_number": "<confirmation from e-MTA>"
-})
-```
-
-> **Payment note:** Check your e-MTA prepayment account (ettemaksukonto) balance before paying. If payroll taxes or other obligations already created a positive balance, the actual bank transfer may be lower than KMD Line 12. Make a bank transfer to EMTA — the bank statement reconciliation will clear the VAT Payable account.
+> **Payment note:** check the e-MTA prepayment account (ettemaksukonto) first — a
+> positive balance from payroll taxes may reduce the actual transfer below KMD line 12.
 
 ## Output
 
-Up to three XML files ready for upload:
-- `KMD_YYYYMM_{REGCODE}.xml` — Main VAT declaration form (Lines 1-13)
-- `KMDINF_YYYYMM_{REGCODE}.xml` — KMD INF annex (Parts A & B, partners > EUR 1,000)
-- `VD_YYYYMM_{REGCODE}.xml` — EC Sales List / Form VD (only if IC supplies exist)
-
-Plus ERP records:
-- Tax return (draft) viewable at Admin Dashboard → Tax → Returns
-- VAT closing journal entry posted to GL
+- Pre-close gate report (Phase 2) with PASS / WARN / BLOCK per check.
+- `KMD_YYYYMM_{REGCODE}.csv` (primary) + `vatDeclaration_YYYYMM_{REGCODE}.xml` (secondary).
+- A hand-off to `/prepare-ec-sales-list` when IC supplies exist (Form VD is filed separately).
+- Tax return record + VAT closing journal entry, with the `tax_return_id`.

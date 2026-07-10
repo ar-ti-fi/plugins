@@ -1,96 +1,148 @@
-# VAT Declaration Validation Checklist
+# KMD Pre-Close Validation Gate
 
-Run these checks before submitting the KMD to EMTA. Each check must pass.
+The single gate that runs **before** the KMD is generated or uploaded. Every check has
+a severity:
 
-## Pre-Submission Checks
+- **BLOCK** — do not generate the return until fixed.
+- **WARN** — generate, but surface for the reviewer to confirm.
 
-### 1. Transaction Completeness
+Run all seven, then emit one pass/fail report (see "Output" below). If any BLOCK is
+open, **refuse to generate** and print the list. The `/prepare-vat-declaration` command
+runs this gate automatically before the generate step; `/prepare-vat-declaration
+validate` runs it standalone and stops.
 
-- [ ] All invoices for the period are posted (no drafts remaining)
-- [ ] All credit notes for the period are posted
-- [ ] No unposted journal entries affecting VAT accounts
-- [ ] All transactions have tax codes assigned
+Each check caused real rework in a prior period; the *Caught* note says what it would
+have prevented.
 
-**How to verify:**
+---
+
+## 1. Output-format validation — BLOCK
+
+Enforced mechanically by `scripts/generate_kmd.py` after it builds the files and
+**before** it writes them (the script refuses to write on any failure):
+
+- XML validates against the bundled official `vatdeclaration.xsd` (`xmllint --noout --schema`).
+- CSV is mechanically well-formed: exactly **31 fields** per row, period-correct
+  **version** (KMD6 from 07.2025), **dot** decimals, `TRUE`/`FALSE` flags, **CRLF**
+  endings, no BOM, and no total-VAT/payable columns.
+- Derived figures recomputed and asserted: `line4 = 24%·line1 + 9%·line2 + …`;
+  `line12 = line4 − inputVatTotal + adjustmentsPlus − adjustmentsMinus`; and, when the
+  caller passes `expected_vat_payable` / `expected_vat_overpaid`, the computed value
+  must match.
+
+*Caught:* all three e-MTA rejections (the fabricated `<KMD>` schema and the
+prose-header CSV) and the €20.79 line-5 gross-up error.
+
+## 2. Completeness — payments without a document — BLOCK
+
+Find cash movements in the period with no matching invoice/bill:
+
 ```
-# Check for draft transactions in the period
-list_entities("transaction", {
-    "legal_entity_id": ID,
-    "status": "draft"
-}, date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"}})
-```
-
-### 2. Tax Code Coverage
-
-- [ ] Every AR invoice line has a tax code assigned
-- [ ] Every AP invoice line has a tax code assigned
-- [ ] No transactions use inactive or invalid tax codes
-- [ ] All tax codes are classified to a KMD line
-
-### 3. KMD Calculation Integrity
-
-- [ ] Line 1.1 = Line 1 x applicable rate (or sum of actual VAT from invoices)
-- [ ] Line 2.1 = sum of VAT from reduced-rate invoices
-- [ ] Line 10 = (Line 1.1 + Line 2.1) - Line 4 + Line 8
-- [ ] If Line 10 + Line 11 > 0 → Line 12 is populated, Line 13 = 0
-- [ ] If Line 10 + Line 11 < 0 → Line 13 is populated, Line 12 = 0
-- [ ] Line 12 and Line 13 are mutually exclusive (not both > 0)
-
-### 4. KMD INF Reconciliation
-
-- [ ] All partners with total > EUR 1,000 are listed
-- [ ] Partner registration codes are valid format (8 digits for Estonian)
-- [ ] Sum of Part A taxable amounts is consistent with KMD output VAT lines
-- [ ] Sum of Part B taxable amounts is consistent with total AP invoice base
-- [ ] No duplicate partner entries
-
-### 5. EC Sales List Reconciliation
-
-- [ ] Form VD goods total = KMD Line 3.1
-- [ ] Form VD services total = KMD Line 3.2
-- [ ] All customer VAT numbers are in valid EU format
-- [ ] Customer VAT numbers verified via VIES (or scheduled for verification)
-
-### 6. GL Account Reconciliation
-
-- [ ] VAT Output account balance matches KMD output VAT total (Lines 1.1 + 2.1)
-- [ ] VAT Input account balance matches KMD Line 4
-- [ ] VAT Payable/Receivable net matches Line 12 or Line 13
-- [ ] No unexplained differences between GL and KMD
-
-**How to verify:**
-```
-generate_report("trial_balance", {
-    "legal_entity_id": ID,
-    "as_of_date": "YYYY-MM-DD"
-})
-# Compare VAT account balances to KMD totals
+list_entities("transaction", {"legal_entity_id": ID, "transaction_type": "ar_payment"},
+    date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"}})
+list_entities("transaction", {"legal_entity_id": ID, "transaction_type": "ap_payment"}, ...)
+# plus unmatched bank statement lines for the period
 ```
 
-### 7. Format Validation (for XML submission)
+Any AR_PAYMENT / AP_PAYMENT with `recon_status` null/unmatched, or any unmatched
+`bank_statement_line`, is a **missing invoice/bill** (or a payment that should not be
+there). List them and BLOCK until each is resolved.
 
-- [ ] XML files are UTF-8 encoded
-- [ ] All amounts have exactly 2 decimal places
-- [ ] Period year/month are correct
-- [ ] Taxpayer registration code is correct (8 digits)
-- [ ] All required XML elements are present
+*Caught:* the €572.88 Telia receipt whose invoice 2077 was never posted; the orphaned
+EMTA tax payments.
 
-## Common Issues and Resolutions
+## 3. Period basis / cut-off — WARN
+
+Build the return strictly from documents **by invoice/document date**, never by payment
+date. Flag any document whose invoice date and settlement date fall in different
+periods so the reviewer checks the other period.
+
+*Caught:* Nexia (invoice April, paid June) and the DigitalOcean / Supabase / Google May
+invoices paid in June — the payment-vs-invoice-date confusion.
+
+## 4. Tax-code coverage & jurisdiction sanity — BLOCK on missing, WARN on mismatch
+
+- **BLOCK**: every taxable transaction line has a tax code (existing CP2), and each code
+  resolves to a KMD line (see `references/tax-codes-ee.md`).
+- **WARN**: supplier jurisdiction agrees with the code — an Estonian (EE) vendor must
+  **not** carry an intra-EU-acquisition code (line 6); a non-EU supplier must map to
+  line 7, not line 6. Compare `vendor.country_code` against the code's `tax_scope`.
+
+*Caught:* Nexia / Wise Guys / AWS coded 845 (intra-EU) though domestic; the EU/non-EU
+reverse-charge merge. (See `BILL_AGENT_FIX_for_ClaudeCode.md` — this check is the safety
+net for that agent bug.)
+
+## 5. GL tie-out — BLOCK on material difference
+
+Reconcile the declaration to the VAT control accounts via
+`generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "YYYY-MM-DD"})`
+for the period:
+
+- output VAT (`24%·line1 + reduced rates`) ↔ output-VAT account movement (2300 / 2310);
+- input VAT (`inputVatTotal`, line 5) ↔ input-VAT account movement (2300 debit side / 2311);
+- net ↔ line 12.
+
+Report any difference above a rounding tolerance (≈ EUR 1) together with the driving
+account.
+
+> **Note:** the built-in `vat_report` is currently broken (`relation "tax_transactions"
+> does not exist`), so tie out against the **trial balance** until that is fixed.
+
+## 6. INF threshold / annex consistency — BLOCK
+
+Sum sales per partner (excl. VAT) and purchases per partner (incl. VAT) for the period:
+
+```
+aggregate_entities("transaction", ["party_name"], {"amount": "sum", "id": "count"},
+    {"legal_entity_id": ID, "transaction_type": "ar_invoice"}, date_filters={...})
+# and the same for ap_invoice
+```
+
+If any partner ≥ EUR 1,000, the corresponding annex (`salesAnnex` / `purchasesAnnex`)
+must be present and `noSales` / `noPurchases` = FALSE. Otherwise both must be TRUE and
+the annexes omitted. (`generate_kmd.py` derives the flags from the annex lines, so the
+gate's job is to confirm the annex lines match the threshold sums.)
+
+*Caught:* confirms Hala's `noSales` / `noPurchases` = TRUE were correct (Telia €910 <
+€1,000), and would flag the opposite mistake.
+
+## 7. Arithmetic / form rules — BLOCK
+
+- line 12 and line 13 are mutually exclusive (enforced by the script).
+- If an EC Sales List (Form VD) exists: goods total = line 3.1, services total = line 3.2.
+- All monetary values have 2 decimals and are non-negative where the XSD requires
+  (`adjustmentsPlus` / `adjustmentsMinus`).
+
+---
+
+## Output
+
+Emit a single report — one row per check with **PASS / WARN / BLOCK**, the offending
+records, and the fix:
+
+```
+KMD Pre-Close Gate — Entity 41, 2026-06
+  1. Output format ............ PASS
+  2. Payments w/o document .... BLOCK  AP_PAYMENT #518 (€572.88 Telia) unmatched → post invoice 2077
+  3. Period cut-off ........... WARN   Nexia inv 2026-04-…, settled 2026-06 → confirm April period
+  4. Tax-code jurisdiction .... WARN   Vendor "AWS" (US) coded 845 (intra-EU) → should be line 7
+  5. GL tie-out ............... PASS
+  6. INF threshold ............ PASS   no partner ≥ €1,000 → noSales/noPurchases=TRUE
+  7. Arithmetic / form rules .. PASS
+
+RESULT: 1 BLOCK, 2 WARN → generation refused. Fix BLOCK items and re-run.
+```
+
+- **If any BLOCK is open**, refuse to generate the KMD and print the list.
+- **WARN items** are listed but do not stop generation — the reviewer confirms them.
+
+## Common issues and resolutions
 
 | Issue | Resolution |
 |---|---|
-| Missing tax code on invoice | Review transaction, assign correct tax code |
-| Invalid partner registration code | Verify against Estonian Business Registry (ariregister.rik.ee) |
-| GL balance does not match KMD | Check for unposted entries, manual journal entries, or timing differences |
-| KMD INF total differs from KMD | Check partners below threshold, credit notes, exempt transactions |
-| EC Sales List does not match Lines 3.1/3.2 | Verify IC transaction classification, check customer VAT IDs |
-| Duplicate in KMD INF | Merge entries for same partner, sum amounts |
-| VAT on imports not matching | Verify customs declaration data, check Line 11 |
-
-## Severity Levels
-
-| Severity | Description | Action |
-|---|---|---|
-| **Blocker** | KMD calculation errors, GL mismatch > EUR 1 | Must fix before filing |
-| **Warning** | Missing partner codes, rounding differences < EUR 1 | Should fix, can file with note |
-| **Info** | No IC transactions (Form VD not needed), all checks pass | No action needed |
+| Payment with no matching document | Post the missing invoice/bill, or reverse the stray payment |
+| EE vendor carrying an intra-EU code | Recode to a domestic code; if reverse charge, use line 7 not line 6 |
+| Missing tax code on invoice | Assign the correct code (property-based, see tax-codes-ee.md) |
+| GL balance ≠ KMD | Unposted entries, manual journals, or a cut-off timing difference |
+| KMD INF total ≠ KMD | Partners below threshold, credit notes, exempt transactions |
+| EC Sales List ≠ lines 3.1/3.2 | Verify IC classification and customer EU VAT IDs |

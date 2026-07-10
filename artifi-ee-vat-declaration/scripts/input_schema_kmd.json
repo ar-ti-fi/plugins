@@ -1,82 +1,56 @@
 {
-  "_comment": "KMD input schema. All monetary values are decimals (EUR). Build this from ERP transaction data for the period.",
+  "_comment": "KMD2 input schema for generate_kmd.py. Real e-MTA element names (NOT Line1_1…Line13). declaration_body values are taxable BASES by rate, EXCEPT inputVatTotal/importVat/fixedAssetsVat/carsVat which are VAT amounts. e-MTA computes total VAT (line 4), VAT due (line 12) and overpaid (line 13) itself — do not supply them (no such element/column exists). Output: a KMD2 machine CSV (primary) + XSD-validated vatDeclaration XML (secondary). All monetary values are EUR decimals with a dot.",
 
-  "regcode": "12345678",
-  "vat_number": "EE123456789",
-  "year": 2025,
-  "month": 1,
+  "regcode": "14276473",
+  "submitter_person_code": null,
+  "year": 2026,
+  "month": 6,
+  "declaration_type": 1,
+  "input_vat_full_deduction": true,
 
-  "_comment_kmd_lines": "Lines 1-13 of the KMD form. Line 10 = (1.1 + 2.1) - 4 + 8. Lines 12/13 are mutually exclusive.",
-  "kmd_lines": {
-    "line1":   100000.00,
-    "line1_1":  24000.00,
-    "line2":     5000.00,
-    "line2_1":    650.00,
-    "line3":    10000.00,
-    "line3_1":  15000.00,
-    "line3_2":   8500.00,
-    "line4":    18000.00,
-    "line4_1":   5000.00,
-    "line5":        0.00,
-    "line5_1":      0.00,
-    "line6":        0.00,
-    "line7":        0.00,
-    "line8":        0.00,
-    "line10":    6650.00,
-    "line11":       0.00,
-    "line12":    6650.00,
-    "line13":       0.00
+  "_comment_declaration_body": "KMD main form (declarationBody). Omit or set 0 for lines that do not apply. Rate lines feed e-MTA's line-4 computation. Reverse charge is a BASE only: EU suppliers -> euAcquisitionsGoodsAndServicesTotal (line 6); non-EU services + domestic reverse charge -> acquisitionOtherGoodsAndServicesTotal (line 7). For a full-deduction taxpayer do NOT gross reverse-charge VAT into inputVatTotal (line 5); if input_vat_full_deduction is false, handle the non-deductible reverse-charge output via adjustmentsPlus (line 10).",
+  "declaration_body": {
+    "transactions24": 100000.00,
+    "transactions22": 0.00,
+    "transactions20": 0.00,
+    "transactions9": 5000.00,
+    "transactions5": 0.00,
+    "transactions13": 0.00,
+    "transactionsZeroVat": 0.00,
+    "euSupplyInclGoodsAndServicesZeroVat": 23500.00,
+    "euSupplyGoodsZeroVat": 15000.00,
+    "exportZeroVat": 0.00,
+    "salePassengersWithReturnVat": 0.00,
+    "inputVatTotal": 18000.00,
+    "importVat": 0.00,
+    "fixedAssetsVat": 5000.00,
+    "carsVat": 0.00,
+    "numberOfCars": 0,
+    "carsPartialVat": 0.00,
+    "numberOfCarsPartial": 0,
+    "euAcquisitionsGoodsAndServicesTotal": 0.00,
+    "euAcquisitionsGoods": 0.00,
+    "acquisitionOtherGoodsAndServicesTotal": 0.00,
+    "acquisitionImmovablesAndScrapMetalAndGold": 0.00,
+    "supplyExemptFromTax": 0.00,
+    "supplySpecialArrangements": 0.00,
+    "adjustmentsPlus": 0.00,
+    "adjustmentsMinus": 0.00
   },
 
-  "_comment_kmd_inf": "Partners > EUR 1,000. Part A = sales (AR invoices). Part B = purchases (AP invoices).",
-  "kmd_inf": {
-    "part_a": [
-      {
-        "reg_code": "87654321",
-        "name": "Customer OÜ",
-        "invoice_count": 5,
-        "taxable_amount": 5000.00,
-        "vat_amount": 1200.00
-      },
-      {
-        "reg_code": "11223355",
-        "name": "Another Client AS",
-        "invoice_count": 2,
-        "taxable_amount": 8000.00,
-        "vat_amount": 1920.00
-      }
-    ],
-    "part_b": [
-      {
-        "reg_code": "11223344",
-        "name": "Vendor AS",
-        "invoice_count": 3,
-        "taxable_amount": 3000.00,
-        "vat_amount": 720.00
-      },
-      {
-        "reg_code": "99887766",
-        "name": "Supplier OÜ",
-        "invoice_count": 8,
-        "taxable_amount": 12500.00,
-        "vat_amount": 3000.00
-      }
+  "_comment_sales_annex": "KMD INF A (salesAnnex): sales partners where invoices to that partner total > EUR 1,000 in the period. Omit the whole key when no partner reaches the threshold — output then sets noSales=true and omits the annex. sum_per_partner=false is detailed per-invoice (invoiceNumber + invoiceDate as YYYY-MM-DD, rendered DD.MM.YYYY in the CSV); true summarises per partner. taxRate is the classifier value (e.g. '24', '24erikord').",
+  "sales_annex": {
+    "sum_per_partner": false,
+    "lines": [
+      {"buyerRegCode": "87654321", "buyerName": "Customer OÜ", "invoiceNumber": "2026-114", "invoiceDate": "2026-06-15", "invoiceSum": 13000.00, "taxRate": "24", "sumForRateInPeriod": 13000.00}
     ]
   },
 
-  "_comment_vd_entries": "EC Sales List entries. Only include if intra-community supplies exist. Must reconcile: goods (G+T) total = kmd_lines.line3_1, services (S) total = kmd_lines.line3_2. Omit this key entirely if no IC supplies.",
-  "vd_entries": [
-    {
-      "customer_vat_number": "FI12345678",
-      "country_code": "FI",
-      "supply_type": "G",
-      "amount": 15000.00
-    },
-    {
-      "customer_vat_number": "DE987654321",
-      "country_code": "DE",
-      "supply_type": "S",
-      "amount": 8500.00
-    }
-  ]
+  "_comment_purchases_annex": "KMD INF B (purchasesAnnex): purchase partners where invoices from that partner total > EUR 1,000 (incl. VAT). invoiceSumVat = total incl. VAT; vatInPeriod = input VAT declared on line 5 for that partner this period. Omit the key when no partner reaches the threshold.",
+  "purchases_annex": {
+    "sum_per_partner": false,
+    "lines": [
+      {"sellerRegCode": "11223344", "sellerName": "Vendor AS", "invoiceNumber": "V-8842", "invoiceDate": "2026-06-09", "invoiceSumVat": 3660.00, "vatSum": 660.00, "vatInPeriod": 660.00}
+    ]
+  }
 }
