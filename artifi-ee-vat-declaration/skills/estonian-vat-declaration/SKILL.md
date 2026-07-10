@@ -305,13 +305,24 @@ Provide filing guidance from **references/emta-filing-guide.md**:
 - XML format available for upload (downloadable from Admin Dashboard → Tax → Returns → [this return])
 - Digital signature required
 
-After the user files with EMTA and receives confirmation, mark the return as filed:
+After the user files with EMTA and receives confirmation, mark the return as filed
+(this also transitions the tax reporting period to `filed`):
 ```
 submit("tax_return", "file", {
     "return_id": <tax_return_id from Step 8>,
     "confirmation_number": "<confirmation from e-MTA>"
 })
 ```
+
+Then offer to **lock the period** so the filed return keeps matching the ledger:
+```
+submit("tax_period", "lock", {
+    "period_id": <reporting_period_id>,
+    "reason": "KMD filed — confirmation <number>"
+})
+```
+To amend later: `submit("tax_period", "unlock", …)` → correct → re-file → re-lock.
+The Reports → Sales tax reconciliation panel flags any ledger-vs-return drift.
 
 > **Payment note:** Check your e-MTA prepayment account (ettemaksukonto) balance before paying. If payroll taxes or other obligations already created a positive balance, the actual payment may be lower than KMD Line 12. Make a bank transfer to EMTA — the bank statement reconciliation will clear the VAT Payable account.
 

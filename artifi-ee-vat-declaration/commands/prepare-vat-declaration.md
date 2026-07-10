@@ -124,7 +124,12 @@ On success it writes:
 2. "Laadi fail" → upload `KMD_YYYYMM_{REGCODE}.csv` (or the XML — both carry the main
    form and the INF partners). If Form VD applies, file it separately.
 3. Portal validates → sign digitally → submit. **Deadline: 20th of the following month.**
-4. After filing: `submit("tax_return", "file", {"return_id": …, "confirmation_number": …})`.
+4. After filing: `submit("tax_return", "file", {"return_id": …, "confirmation_number": …})` —
+   this also transitions the tax reporting period to `filed`.
+5. **Lock the period** so the filed return keeps matching the ledger:
+   `submit("tax_period", "lock", {"period_id": <reporting_period_id>, "reason": "KMD filed — conf# …"})`.
+   Ask the user first; to amend later, `submit("tax_period", "unlock", …)`, correct, re-file, re-lock.
+   The Reports → Sales tax reconciliation panel flags any ledger-vs-return drift either way.
 
 > **Payment note:** check the e-MTA prepayment account (ettemaksukonto) first — a
 > positive balance from payroll taxes may reduce the actual transfer below KMD line 12.
