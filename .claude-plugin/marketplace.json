@@ -14,7 +14,13 @@
       "description": "Financial reporting suite: Balance Sheet, Profit & Loss, Cash Flow, Trial Balance, Aging Analysis, and Dimension Analysis. Works with any chart of accounts.",
       "version": "1.0.0",
       "category": "reporting",
-      "keywords": ["financial-reports", "balance-sheet", "income-statement", "cash-flow", "aging"]
+      "keywords": [
+        "financial-reports",
+        "balance-sheet",
+        "income-statement",
+        "cash-flow",
+        "aging"
+      ]
     },
     {
       "name": "artifi-core-budget-planning",
@@ -22,7 +28,12 @@
       "description": "Budget planning: annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting.",
       "version": "1.0.0",
       "category": "planning",
-      "keywords": ["budget", "forecast", "variance", "planning"]
+      "keywords": [
+        "budget",
+        "forecast",
+        "variance",
+        "planning"
+      ]
     },
     {
       "name": "artifi-core-cost-allocation",
@@ -30,7 +41,12 @@
       "description": "Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice).",
       "version": "2.0.0",
       "category": "accounting",
-      "keywords": ["cost-allocation", "departments", "projects", "dimensions"]
+      "keywords": [
+        "cost-allocation",
+        "departments",
+        "projects",
+        "dimensions"
+      ]
     },
     {
       "name": "artifi-ee-annual-report",
@@ -38,7 +54,13 @@
       "description": "Estonian Annual Report (majandusaasta aruanne) preparation for the e-Business Register. Financial statements, notes, management report, and XBRL filing.",
       "version": "1.0.0",
       "category": "compliance",
-      "keywords": ["estonia", "annual-report", "xbrl", "ariregister", "majandusaasta-aruanne"]
+      "keywords": [
+        "estonia",
+        "annual-report",
+        "xbrl",
+        "ariregister",
+        "majandusaasta-aruanne"
+      ]
     },
     {
       "name": "artifi-ee-payroll-calculator",
@@ -46,15 +68,27 @@
       "description": "Estonian payroll calculator. Income tax, social tax, unemployment insurance, funded pension, and TSD declaration generation for EMTA.",
       "version": "1.0.0",
       "category": "compliance",
-      "keywords": ["estonia", "payroll", "tsd", "emta", "social-tax"]
+      "keywords": [
+        "estonia",
+        "payroll",
+        "tsd",
+        "emta",
+        "social-tax"
+      ]
     },
     {
       "name": "artifi-ee-vat-declaration",
       "source": "./artifi-ee-vat-declaration",
-      "description": "Estonian VAT declaration (KMD) preparation for monthly EMTA filing. KMD form, KMD INF annex, and EC Sales List.",
-      "version": "1.0.0",
+      "description": "Estonian VAT return (KMD) in the official KMD2 format: pre-close validation gate, KMD2 machine CSV + XSD-validated XML with KMD INF annex, file→lock workflow, and EC Sales List (Form VD) preparation.",
+      "version": "2.0.0",
       "category": "compliance",
-      "keywords": ["estonia", "vat", "kmd", "emta", "ec-sales-list"]
+      "keywords": [
+        "estonia",
+        "vat",
+        "kmd",
+        "emta",
+        "ec-sales-list"
+      ]
     },
     {
       "name": "artifi-ee-year-end-bookkeeping",
@@ -62,7 +96,13 @@
       "description": "Full year-end bookkeeping for Estonian companies. Chart of accounts setup, opening balances, bank statement processing, reconciliation, and period close.",
       "version": "1.0.0",
       "category": "compliance",
-      "keywords": ["estonia", "year-end", "bookkeeping", "reconciliation", "period-close"]
+      "keywords": [
+        "estonia",
+        "year-end",
+        "bookkeeping",
+        "reconciliation",
+        "period-close"
+      ]
     },
     {
       "name": "artifi-core-implementation-consultant",
@@ -70,7 +110,14 @@
       "description": "ERP implementation consultant. Guides customers through migration: chart of accounts, opening balances with open transactions, master data import, gap period transaction processing, and go-live verification.",
       "version": "1.0.0",
       "category": "accounting",
-      "keywords": ["migration", "onboarding", "implementation", "opening-balance", "data-import", "go-live"]
+      "keywords": [
+        "migration",
+        "onboarding",
+        "implementation",
+        "opening-balance",
+        "data-import",
+        "go-live"
+      ]
     },
     {
       "name": "artifi-core-reconciliation",
@@ -78,7 +125,14 @@
       "description": "Payment-to-invoice reconciliation. Automated 6-pass matching via reconciliation agent, then guided manual matching for complex cases: N:N splits, partial payments, rounding write-offs. Supports AR and AP.",
       "version": "1.0.0",
       "category": "accounting",
-      "keywords": ["reconciliation", "payment-matching", "cash-application", "AR", "AP", "invoices"]
+      "keywords": [
+        "reconciliation",
+        "payment-matching",
+        "cash-application",
+        "AR",
+        "AP",
+        "invoices"
+      ]
     },
     {
       "name": "artifi-core-country-setup",
@@ -86,7 +140,14 @@
       "description": "Generates country-specific tax and payroll configuration templates. Researches VAT/GST rates, tax authorities, withholding taxes, and payroll rules to produce a structured JSON template for onboarding.",
       "version": "1.0.0",
       "category": "configuration",
-      "keywords": ["onboarding", "country", "tax", "payroll", "configuration", "template"]
+      "keywords": [
+        "onboarding",
+        "country",
+        "tax",
+        "payroll",
+        "configuration",
+        "template"
+      ]
     },
     {
       "name": "artifi-credit-intelligence",
@@ -94,7 +155,16 @@
       "description": "Credit intelligence on a borrower's live general ledger. Produces credit memos with DSCR, leverage, working-capital cycle, concentration risk, and early-warning signals — every metric cited back to specific GL transactions. For banks, alternative lenders, and PE credit teams monitoring portfolio borrowers in real time.",
       "version": "1.0.0",
       "category": "credit",
-      "keywords": ["credit", "DSCR", "covenant", "credit-memo", "underwriting", "portfolio", "watchlist", "EWS"]
+      "keywords": [
+        "credit",
+        "DSCR",
+        "covenant",
+        "credit-memo",
+        "underwriting",
+        "portfolio",
+        "watchlist",
+        "EWS"
+      ]
     },
     {
       "name": "artifi-fund-servicing",
@@ -102,7 +172,16 @@
       "description": "Fund-servicing back office on an AI-native ledger. Strikes NAV, accrues management and performance fees, processes subscriptions and redemptions, maintains the cap table, and produces investor statements. The accounting layer behind tokenized funds, FoFs, and private-market vehicles.",
       "version": "0.1.0",
       "category": "fund-administration",
-      "keywords": ["fund", "NAV", "fund-servicing", "cap-table", "subscription", "redemption", "SGR", "tokenized-fund"]
+      "keywords": [
+        "fund",
+        "NAV",
+        "fund-servicing",
+        "cap-table",
+        "subscription",
+        "redemption",
+        "SGR",
+        "tokenized-fund"
+      ]
     }
   ]
 }

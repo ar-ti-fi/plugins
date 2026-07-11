@@ -1,6 +1,6 @@
 ---
 name: Estonian VAT Declaration (KMD)
-description: Prepares the monthly Kaibemaksudeklaratsioon (KMD) for EMTA filing, including KMD INF annex and EC Sales List (Form VD)
+description: Prepares the monthly Estonian VAT return (KMD) in the official KMD2 format — pre-close validation gate, KMD2 machine CSV + XSD-validated XML with KMD INF annex, GL reconciliation, and file→lock workflow for e-MTA
 ---
 
 ## Trigger

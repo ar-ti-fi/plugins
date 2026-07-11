@@ -82,6 +82,24 @@ We welcome contributions for new countries. A typical compliance plugin needs:
 
 See any existing country plugin for the structure. Open an issue or PR to get started.
 
+## Versioning (required on every content change)
+
+Claude.ai caches installed plugins **by version** — shipping changed content under an
+unchanged version means users keep the stale cached copy even after reinstalling.
+Whenever you change anything inside a plugin, bump its version:
+
+```bash
+python3 plugins/scripts/plugin_versions.py --bump <plugin-name> <major|minor|patch>
+```
+
+- **major** — breaking: commands removed/renamed, output format changed
+- **minor** — new commands or features
+- **patch** — fixes, doc/text updates
+
+The bump updates `plugin.json`, `marketplace.json`, and `versions.lock.json` together.
+CI (`publish-plugins.yml`) runs `plugin_versions.py --check` before syncing to the
+public marketplace repo and **fails the publish** if content changed without a bump.
+
 ## License
 
 [MIT](./LICENSE) - Arfiti Technologies OU
