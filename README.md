@@ -100,6 +100,14 @@ The bump updates `plugin.json`, `marketplace.json`, and `versions.lock.json` tog
 CI (`publish-plugins.yml`) runs `plugin_versions.py --check` before syncing to the
 public marketplace repo and **fails the publish** if content changed without a bump.
 
+Why this exists (per the official plugin-marketplace docs): when `version` is set,
+clients pin the cached plugin to that exact string — *"you must bump it every time you
+want users to receive changes; pushing new commits alone is not enough."* The docs also
+advise against setting `version` in both `plugin.json` and the marketplace entry
+(plugin.json silently wins); we deliberately keep both **because the CI check enforces
+they are identical**, which removes the masking risk while every client surface sees
+the same version. Do not remove one of them without updating the checker.
+
 ## License
 
 [MIT](./LICENSE) - Arfiti Technologies OU
