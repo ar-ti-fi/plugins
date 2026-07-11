@@ -89,10 +89,11 @@ Build the input JSON (see `scripts/input_schema_kmd.json` for the full example):
 ## Phase 4 — EC Sales List (Form VD) hand-off, only if intra-EU B2B supplies exist
 
 Check whether the period has zero-rated supplies to EU VAT-registered customers
-(KMD lines 3.1 / 3.2 non-zero). If so, the **EC Sales List (Form VD)** is due — a
-**separate** e-MTA declaration with its own format. Tell the user to run
-**`/artifi-ee:prepare-ec-sales-list`** for it (it reconciles goods total = line 3.1,
-services total = line 3.2). If there are no IC supplies, state that Form VD is not
+(KMD line 3.1 — `euSupplyInclGoodsAndServicesZeroVat` — non-zero, or triangular
+resales exist). If so, the **EC Sales List (Form VD)** is due — a **separate** e-MTA
+declaration with its own format. Tell the user to run
+**`/artifi-ee:prepare-ec-sales-list`** for it (it reconciles VD goods = line 3.1.1 and
+VD services = line 3.1 − 3.1.1). If there are no IC supplies, state that Form VD is not
 required. Form VD is intentionally its own command because it is a distinct filing, not
 part of the KMD2 dataset.
 

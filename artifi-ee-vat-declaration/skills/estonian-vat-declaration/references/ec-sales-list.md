@@ -1,105 +1,94 @@
-# EC Sales List (Form VD / VDP)
+# EC Sales List (Form VD / VDP / VDA)
 
-The EC Sales List (Form VD — Uhenduseisisese kauba tarnete ja teenuste osutamise aruanne)
-reports intra-community B2B supplies to VAT-registered customers in other EU member states.
+The report on intra-Community supply (Form VD — ühendusesisese käibe aruanne, VAT Act
+§ 28) reports intra-Community B2B supplies to VAT-registered persons in other EU
+member states. Amendments to prior periods go on **Form VDP**; call-off stock changes
+on **VDA**.
+
+Content below follows the official EMTA completion procedure (form valid from
+01.02.2021).
 
 ## Filing Requirements
 
 | Attribute | Detail |
 |---|---|
-| **Form** | VD (report) / VDP (amendments to prior periods) |
-| **Frequency** | Monthly (same period as KMD) |
-| **Deadline** | 20th of the following month (same as KMD) |
-| **Authority** | EMTA (Estonian Tax and Customs Board) |
-| **Required when** | Company has intra-community B2B supplies of goods or services |
+| **Form** | VD (report) / VDP (amendment of prior periods) / VDA (call-off stock changes) |
+| **Frequency** | Monthly, submitted together with the KMD |
+| **Deadline** | 20th of the following month |
+| **Amounts** | **Full euros** (no cents) |
+| **Authority** | EMTA — file at <https://maasikas.emta.ee/decl-list-client/vd> |
+| **Required when** | Intra-Community supply of goods, § 10 (4) 9) services to EU taxable persons, triangular resale, or call-off stock transport occurred |
+| **Not required when** | None of the above occurred in the period — do not submit an empty VD |
 
-## When to File
+## The Form's Columns (official layout)
 
-File Form VD when the entity has any of:
-- Intra-community supply of goods to VAT-registered buyers in other EU states
-- Cross-border B2B services subject to reverse charge in the customer's country
-- Triangular transaction involvement (as intermediary/reseller)
-- Call-off stock transfers to another EU member state
+One row **per purchaser VAT number** — goods and services for the same purchaser go
+in **one row**; a VAT number must not recur.
 
-## Data Required Per Customer
-
-| Field | Description | Source |
+| Col | Content | Notes |
 |---|---|---|
-| Customer VAT number | EU VAT ID (must be verified via VIES) | `customer.tax_id` |
-| Customer country | 2-letter EU country code | `customer.country` |
-| Total supply amount | Sum of invoices for the period (EUR) | AR invoice aggregation |
-| Supply type | **G** = Goods, **S** = Services, **T** = Triangular | Invoice classification |
+| **1** | Country code of the purchaser | ISO code; **EL** for Greece, **XI** for Northern Ireland |
+| **2** | Purchaser's VAT identification number | No punctuation/spaces; verify via VIES before invoicing |
+| **3** | Taxable value of **goods** (intra-Community supply) | Empty for pure call-off stock transport |
+| **4** | **Triangular transaction** value (as reseller) | Resale in a triangle is NOT intra-Community supply — not in the KMD at all |
+| **5** | Taxable value of **services** (§ 10 (4) 9), taxed in recipient's state) | Services to **Northern Ireland (XI) are NOT declared** |
+| **6** | VAT number of the **call-off stock** acquirer | Cols 2–3 stay empty for the transport itself |
+
+**Credit notes / cancelled invoices:** reduce the value in the period the credit
+invoice was issued (negative values allowed, minus sign). Other corrections of past
+periods → Form VDP.
+
+## Reconciliation with the KMD (KMD2 element names)
+
+| VD column | Reconciles with |
+|---|---|
+| Col 3 (goods) total | `euSupplyGoodsZeroVat` — KMD line **3.1.1** |
+| Col 5 (services) total | `euSupplyInclGoodsAndServicesZeroVat` − `euSupplyGoodsZeroVat` — KMD line **3.1 − 3.1.1** |
+| Col 4 (triangular) | **Nothing** — the reseller's triangular resale is not declared in the KMD |
+
+> Small legitimate differences on the goods line can arise (e.g. new means of
+> transport sold to non-VAT-registered persons, customs-agency representation per
+> § 17 (2¹)) — flag but don't hard-block on them; everything else must tie out.
+
+⚠️ Older versions of this plugin reconciled "goods = 3.1, services = 3.2" — that was
+**wrong**: 3.1 is the goods+services total and 3.2 is *export of goods* (non-EU),
+which never appears on the VD.
 
 ## How to Identify IC Transactions
 
-Use tax code properties to find intra-community supplies:
+Use tax code properties — never hardcoded names (see `tax-codes-ee.md`):
 
-1. Filter AR invoices for the period
-2. Identify transactions where the tax code has:
-   - `default_rate = 0` AND customer is in EU (not Estonia) AND customer has EU VAT ID
-3. Classify supply type:
-   - **Goods (G)**: Physical goods shipped to another EU state
-   - **Services (S)**: B2B services where place of supply is customer's country
-   - **Triangular (T)**: Triangular/chain transactions as intermediary
-
-## Preparing Form VD
-
-```
-# Step 1: Find IC supply invoices
-# Filter transactions where tax code properties indicate IC supply
-# AND customer country is EU (not EE) AND customer has VAT ID
-
-# Step 2: Group by customer VAT number
-# For each customer:
-# - Sum all IC invoice amounts for the period
-# - Determine supply type (G, S, or T)
-# - One entry per customer per supply type
-
-# Step 3: Validate VAT numbers via VIES before submission
-```
-
-## Reconciliation with KMD
-
-| VD Supply Type | Must Reconcile With KMD Line |
-|---|---|
-| Goods (G) | Line 3.1 (Intra-Community supply of goods) |
-| Services (S) | Line 3.2 (Intra-Community supply of services) |
-| Triangular (T) | Line 3.1 |
-
-**Critical**: The total of all Form VD amounts for goods MUST equal KMD line 3.1,
-and services MUST equal KMD line 3.2. Any discrepancy will trigger EMTA review.
+1. AR invoices for the period where `default_rate = 0` and the customer is an
+   EU (non-EE) business with a VAT ID.
+2. Classify: **goods** (col 3) vs **§ 10 (4) 9) services** (col 5) vs **triangular
+   resale** (col 4) vs **call-off stock** (col 6).
+3. Group by purchaser VAT number — one row per purchaser, goods and services summed
+   into the same row. Amounts in full euros.
+4. Exclude services provided to Northern Ireland (XI) customers.
 
 ## VAT Number Verification
 
-Before including a customer on Form VD:
-1. Verify their VAT number using the EU VIES database (ec.europa.eu/taxation_customs/vies)
-2. Record verification date and result
-3. If VAT number is invalid, the supply **cannot be zero-rated** — standard rate applies
+Verify every purchaser's VAT number via VIES
+(<https://ec.europa.eu/taxation_customs/vies/>) — EMTA itself recommends checking
+before invoicing. If a number is invalid, the supply **cannot be zero-rated**
+(standard rate applies) and the row does not belong on the VD.
 
-## Filing format
+## Filing
 
 The VD is a **separate** e-MTA declaration from the KMD — it is **not** part of the
 KMD2 dataset and is not produced by `generate_kmd.py`. Do **not** reuse the KMD
 `vatDeclaration` schema or any `http://emta.ee/schemas/vat` namespace for it (that
 namespace does not exist at e-MTA).
 
-Two supported ways to file:
-
-1. **Portal entry / fillable form** — enter the per-partner rows at
-   <https://maasikas.emta.ee/decl-list-client/vd>. This is what this plugin prepares
-   the data for today: use the "Data required per customer" table above, grouped by
-   partner VAT number and supply type, and reconcile against KMD lines 3.1 / 3.2 before
-   entering.
-2. **XML/CSV upload** — e-MTA publishes an official VD upload format (XML sample + XSD)
-   on its technical-information-services page, alongside the KMD2 files.
-
-> **TODO — machine-format generation not implemented.** Generating the official VD
-> upload file is a scoped follow-up, mirroring how the KMD2 CSV/XML is handled: download
-> the authoritative VD **XSD** from e-MTA, bundle it in the plugin, generate the file,
-> and validate with `xmllint --schema` before writing. The real VD element names must
-> come from that XSD — do not hand-author them. Until then, file the VD via the portal.
+**File via the e-MTA portal**: enter the per-purchaser rows at
+<https://maasikas.emta.ee/decl-list-client/vd>. Unlike the KMD, e-MTA publishes **no
+public XSD or machine CSV specification for the VD** on its
+technical-information-services page (checked 2026-07-10) — the deliverable of
+`/prepare-ec-sales-list` is therefore a validated, reconciled data table for portal
+entry, not an upload file. If EMTA later publishes a machine format, mirror the KMD2
+approach: bundle the official schema and validate before writing files.
 
 **Authoritative sources:**
+- Completion procedure (columns, reconciliation): <https://www.emta.ee/sites/default/files/documents/2021-08/vorm_vd_juhend_eng_2020.pdf>
 - VD/VDP forms & procedure: <https://www.emta.ee/en/business-client/taxes-and-payment/tax-returns-exchange-information/vat-return-forms-vd-and-vdp>
-- Technical information (XSD/sample downloads): <https://www.emta.ee/en/business-client/e-services-training-courses/how-use-e-services/technical-information-services>
 - e-MTA VD submission: <https://maasikas.emta.ee/decl-list-client/vd>

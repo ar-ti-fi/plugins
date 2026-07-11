@@ -23,7 +23,7 @@ is open, STOP and do not generate. The individual checkpoints below feed that ga
 - **CP2**: All transaction lines have tax codes assigned — gate check 4
 - **CP3**: KMD calculations balance and tie to the GL — gate checks 1, 5, 7
 - **CP4**: KMD INF totals reconcile and respect the €1,000 threshold — gate check 6
-- **CP5**: EC Sales List reconciles with KMD lines 3.1 / 3.2 — gate check 7
+- **CP5**: EC Sales List reconciles with the KMD: VD goods = line 3.1.1, VD services = line 3.1 − 3.1.1 — gate check 7
 
 ## Workflow Steps
 
@@ -178,7 +178,7 @@ Following **references/ec-sales-list.md**:
 3. Classify supply type: **G** (goods), **S** (services), or **T** (triangular)
 4. Calculate total supply amount per customer per type
 
-**CP5 checkpoint**: Verify Form VD goods total = KMD Line 3.1, services total = KMD Line 3.2. If no IC transactions exist, note that Form VD is not required.
+**CP5 checkpoint**: Verify Form VD col 3 (goods) total = `euSupplyGoodsZeroVat` (KMD line 3.1.1) and col 5 (services) total = `euSupplyInclGoodsAndServicesZeroVat` − `euSupplyGoodsZeroVat` (line 3.1 − 3.1.1). Triangular resale (col 4) is NOT declared in the KMD. If no IC transactions exist, note that Form VD is not required.
 
 ### Step 7: Reconcile VAT GL Accounts
 

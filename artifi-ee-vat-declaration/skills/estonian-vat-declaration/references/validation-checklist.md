@@ -111,7 +111,10 @@ gate's job is to confirm the annex lines match the threshold sums.)
 ## 7. Arithmetic / form rules — BLOCK
 
 - line 12 and line 13 are mutually exclusive (enforced by the script).
-- If an EC Sales List (Form VD) exists: goods total = line 3.1, services total = line 3.2.
+- If an EC Sales List (Form VD) exists: goods total (col 3) = `euSupplyGoodsZeroVat`
+  (line 3.1.1); services total (col 5) = `euSupplyInclGoodsAndServicesZeroVat` −
+  `euSupplyGoodsZeroVat` (line 3.1 − 3.1.1). Triangular resale (col 4) is NOT in the
+  KMD. (Not "3.1 / 3.2" — 3.2 is export, never on the VD.)
 - All monetary values have 2 decimals and are non-negative where the XSD requires
   (`adjustmentsPlus` / `adjustmentsMinus`).
 
@@ -147,4 +150,4 @@ RESULT: 1 BLOCK, 2 WARN → generation refused. Fix BLOCK items and re-run.
 | Missing tax code on invoice | Assign the correct code (property-based, see tax-codes-ee.md) |
 | GL balance ≠ KMD | Unposted entries, manual journals, or a cut-off timing difference |
 | KMD INF total ≠ KMD | Partners below threshold, credit notes, exempt transactions |
-| EC Sales List ≠ lines 3.1/3.2 | Verify IC classification and customer EU VAT IDs |
+| EC Sales List ≠ lines 3.1.1 / (3.1−3.1.1) | Verify IC goods-vs-services classification and customer EU VAT IDs |
