@@ -103,28 +103,35 @@ them**, so never emit them:
 
 | KMD line | Meaning | Formula e-MTA uses |
 |---|---|---|
-| **4** | Total VAT | `Σ(base × rate)` over the six standard rates — **domestic sales VAT only** |
+| **4** | Total VAT | `Σ(base × rate)` over the six standard rates — the rate-line bases **include reverse-charge/IC acquisitions** |
 | **12** | VAT payable | `max(0, line4 + line4¹ − line5 + line10 − line11)` |
 | **13** | VAT overpaid / refundable | `max(0, −(…))` |
 
 `generate_kmd.py` computes line 4 / 12 / 13 for the console summary only; they are for
 human eyeballing and appear in no output file.
 
-> **Reverse charge — critical.** e-MTA's line 4 is **sales VAT only**
-> (`24%×line1 + 9%×line2 + …`); it does **not** add the self-assessed VAT on the
-> reverse-charge acquisition lines 6/7. So for a **full-deduction** taxpayer the
-> reverse charge nets out and must be declared **only** as the base in line 6/7 —
-> do **not** gross it into `inputVatTotal` (line 5), which is the deductible input VAT
-> on domestic/import purchases only. Verified on the live e-MTA form
-> (Hala 06/2026: base 24% = 910.00, line 5 = 80.33, lines 6+7 = 86.64 → line 4 = 218.40,
-> line 12 = 138.07, with the reverse charge carried as base only).
+> **Reverse charge — critical (corrected 2026-07-13 per EMTA's official
+> completion guidance).** The KMD declares taxable transactions **by rate,
+> including** intra-Community acquisitions and services received under reverse
+> charge ("sealhulgas kauba ühendusesisene soetamine … teenuste saamine
+> (pöördmaksustamine)"). So the acquisition bases go **inside the rate lines**
+> (`transactions24` for 24%) — that is what produces the self-assessed VAT in
+> e-MTA's line 4 — and the deductible side goes into `inputVatTotal` (line 5).
+> Lines **6 / 6.1 / 7 / 7.1 are "informatiivsed lahtrid" (informative)**: fill
+> them with the acquisition breakout, but a base that appears only there never
+> enters the calculation. For a full-deduction taxpayer the RC output and
+> deduction cancel (refund unchanged); a partial-deduction taxpayer puts only
+> the deductible portion in line 5 while line 4 carries the full self-assessed
+> VAT. `generate_kmd.py` rejects inputs whose lines 6+7 exceed the rate-line
+> bases.
 >
-> **Partial/limited deduction.** The netting above assumes 100% input-VAT deduction.
-> If the taxpayer's input VAT is only partly deductible, the reverse-charge output is
-> still fully due while its deductible side is reduced, so the netting no longer holds
-> — the non-deductible portion must be handled explicitly (e.g. via `adjustmentsPlus`,
-> line 10). The generator warns when it cannot assume full deduction
-> (`input_vat_full_deduction: false`).
+> **History:** an earlier version of this plugin prescribed the opposite
+> ("bases only on 6/7, never grossed into lines 1/5"). Both conventions yield
+> identical lines 12/13 for a full-deduction taxpayer — which is why returns
+> filed under the old rule were still accepted by e-MTA — but the official
+> guidance is unambiguous, and only the corrected form is right for partial
+> deduction.
+> Source: https://www.emta.ee/ariklient/maksud-ja-tasumine/kaibemaks/kaibedeklaratsiooni-ja-aruannete-esitamine/kaibedeklaratsiooni-taitmine
 
 ## How to classify tax codes
 

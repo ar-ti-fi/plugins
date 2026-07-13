@@ -127,9 +127,11 @@ taxable **bases** by rate (except the input-VAT lines, which are VAT amounts). U
 - `inputVatTotal` (line 5): total recoverable input VAT from purchases
 - `importVat` (5.1), `fixedAssetsVat` (5.2), `carsVat`/`carsPartialVat` (5.3/5.4): subsets of line 5
 
-**Reverse charge / acquisitions (bases):**
-- `euAcquisitionsGoodsAndServicesTotal` (line 6): goods + services acquired from **EU** suppliers; `euAcquisitionsGoods` (6.1) is the goods subset
-- `acquisitionOtherGoodsAndServicesTotal` (line 7): services received from **non-EU** suppliers + domestic reverse charge
+**Reverse charge / acquisitions:**
+- The acquisition bases go **inside the rate lines** (add them to `transactions24` etc.) — per EMTA guidance the rate lines include IC acquisitions and reverse-charge services; that is what drives e-MTA's self-assessed line 4. Their deductible VAT goes into `inputVatTotal` (line 5).
+- `euAcquisitionsGoodsAndServicesTotal` (line 6): informative breakout — goods + services acquired from **EU** suppliers; `euAcquisitionsGoods` (6.1) is the goods subset
+- `acquisitionOtherGoodsAndServicesTotal` (line 7): informative breakout — services received from **non-EU** suppliers + domestic reverse charge
+- Lines 6/6.1/7/7.1 are informative only; the generator rejects inputs whose 6+7 exceed the rate-line bases
 
 **Exempt / adjustments:**
 - `supplyExemptFromTax` (line 8)

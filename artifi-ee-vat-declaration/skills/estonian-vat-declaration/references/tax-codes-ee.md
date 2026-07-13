@@ -22,7 +22,8 @@ Each tax code in `v_tax_codes_effective` has these relevant properties:
 ## Classification Decision Tree
 
 Targets are **KMD2 element names** (see `references/kmd-form-structure.md`). Reverse-charge
-purchases map to a **base** line (6/7); their deductible VAT is separately accumulated
+purchase bases go INTO the rate line (`transactions24`) — that drives the self-assessed
+line 4 — with the informative breakout on lines 6/7 and the deductible VAT accumulated
 into `inputVatTotal` (line 5).
 
 ```
@@ -44,7 +45,9 @@ into `inputVatTotal` (line 5).
                                     → acquisitionImmovablesAndScrapMetalAndGold (line 7.1)
          - NULL scope → do NOT guess between line 6 and 7: fall back to
            `metadata.kmd_line` if present, otherwise ask the user.
-         (If recoverable, also add the self-assessed VAT to inputVatTotal, line 5.)
+         (The acquisition BASE also goes into the rate line — transactions24 — per
+          EMTA guidance; 6/7 are informative. If recoverable, add the self-assessed
+          VAT to inputVatTotal, line 5.)
    NO  → Continue to step 3
 
 3. Check `default_rate` on the SALES side (base):

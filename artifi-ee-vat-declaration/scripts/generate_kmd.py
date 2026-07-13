@@ -38,15 +38,23 @@ Key facts (verified against the bundled XSD and e-MTA's own examples
     payable columns — do not emit them. This is NOT the English prose-header human
     export, which e-MTA rejects.
 
-Reverse charge: e-MTA computes line 4 (total VAT) from SALES only
-(24%×line1 + 9%×line2 + …); it does NOT add the self-assessed VAT on lines 6/7. For a
-full-deduction taxpayer the reverse charge therefore nets out and must be declared ONLY
-as the base in line 6 (`euAcquisitionsGoodsAndServicesTotal`, EU suppliers) or line 7
-(`acquisitionOtherGoodsAndServicesTotal`, non-EU + domestic reverse charge) — do NOT
-gross it into `inputVatTotal` (line 5), which is the deductible input VAT on
-domestic/import purchases only. A partial/limited-deduction taxpayer must handle the
-non-deductible reverse-charge output separately; this script warns when it cannot
-assume 100% deduction (see `input_vat_full_deduction`).
+Reverse charge (corrected 2026-07-13 per EMTA's official completion guidance,
+kaibedeklaratsiooni-taitmine): the KMD declares taxable transactions BY RATE
+"sealhulgas kauba ühendusesisene soetamine … teenuste saamine (pöördmaksustamine)" —
+reverse-charge / IC-acquisition bases belong INSIDE the rate lines (transactions24
+for 24%), which is what drives e-MTA's line 4 (self-assessed output VAT), and the
+deductible side goes into `inputVatTotal` (line 5). Lines 6 / 6.1 / 7 / 7.1 are
+"informatiivsed lahtrid" (informative cells): fill them with the acquisition
+breakout, but they do NOT drive the calculation — a base that appears only there
+never enters the return's arithmetic. For a full-deduction taxpayer the RC output
+(in line 4) and deduction (in line 5) cancel; a partial-deduction taxpayer puts
+only the deductible portion in line 5 while line 4 still carries the full
+self-assessed VAT. validate() rejects inputs whose lines 6+7 exceed the rate-line
+bases (the acquisitions cannot then be inside the rate lines).
+
+NOTE: an earlier version of this script prescribed the opposite ("bases only on
+6/7, never grossed") — for full-deduction taxpayers both conventions produce the
+same line 12/13, which is why filings under the old rule were still accepted.
 
 Usage:
     python3 generate_kmd.py --input /tmp/kmd_data_14276473.json --output /tmp/
@@ -110,8 +118,8 @@ NON_NEGATIVE_ELEMENTS = {"adjustmentsPlus", "adjustmentsMinus"}
 CSV_FIELDS = 31
 
 # Standard VAT rates that feed the computed "total VAT" (line 4) shown in the console
-# summary. Reverse-charge lines (6 / 7) are intentionally NOT here: e-MTA's line 4 is
-# domestic sales VAT only.
+# summary. The rate-line bases INCLUDE reverse-charge / IC acquisitions (see module
+# docstring); lines 6 / 7 are informative breakouts and are intentionally not here.
 LINE4_RATES: Dict[str, Decimal] = {
     "transactions24": Decimal("0.24"),
     "transactions22": Decimal("0.22"),
@@ -279,6 +287,24 @@ def validate(data: dict) -> List[str]:
             "euAcquisitionsGoodsAndServicesTotal (line 6)"
         )
 
+    # Lines 6/7 are INFORMATIVE breakouts of acquisitions that must also sit
+    # inside the rate lines (line 1 etc.) — that is what produces the
+    # self-assessed VAT in e-MTA's line 4. If the informative total exceeds the
+    # rate-line bases, the acquisitions cannot be inside them: structural error.
+    rc_total = sum(
+        (dec(body.get(k, 0)) for k in REVERSE_CHARGE_BASE_ELEMENTS), Decimal("0")
+    )
+    rate_total = sum((dec(body.get(k, 0)) for k in LINE4_RATES), Decimal("0"))
+    if rc_total - rate_total > TOLERANCE:
+        errors.append(
+            f"reverse-charge/IC-acquisition bases on informative lines 6+7 "
+            f"({rc_total:.2f}) exceed the rate-line bases ({rate_total:.2f}). "
+            f"Per EMTA guidance the acquisitions must be INCLUDED in the rate "
+            f"lines (e.g. transactions24) — lines 6/7 are informative only and "
+            f"do not enter the calculation. Add the acquisition bases to the "
+            f"rate lines and their deductible VAT to inputVatTotal (line 5)."
+        )
+
     errors += _validate_annex(data.get("sales_annex"), "sales_annex",
                               "buyerRegCode", "buyerName", "invoiceSum", "taxRate")
     errors += _validate_annex(data.get("purchases_annex"), "purchases_annex",
@@ -306,25 +332,27 @@ def _validate_annex(annex, name, id_field, name_field, *required_fields) -> List
 
 def reverse_charge_warnings(data: dict) -> List[str]:
     """
-    Return warnings (not errors) about reverse-charge handling. e-MTA does not add
-    self-assessed VAT on lines 6/7 to line 4, so the netting only holds at 100% input
-    deduction. Flag partial deduction loudly.
+    Return warnings (not errors) about reverse-charge handling. Lines 6/7 are
+    informative; the acquisition bases must ALSO be inside the rate lines (line 1)
+    and the deductible side inside inputVatTotal (line 5) — see module docstring.
     """
     body = data.get("declaration_body", {}) or {}
     rc = sum((q2(body.get(k, 0)) for k in REVERSE_CHARGE_BASE_ELEMENTS), Decimal("0"))
     if rc <= 0:
         return []
     warnings = [
-        f"Reverse-charge bases present (lines 6/7 total {rc:.2f}). e-MTA computes "
-        "line 4 from sales only, so inputVatTotal (line 5) must be the deductible "
-        "input VAT on domestic/import purchases ONLY — do not gross the reverse "
-        "charge into it."
+        f"Reverse-charge bases present (informative lines 6/7 total {rc:.2f}). "
+        "Confirm the same bases are INCLUDED in the rate lines (e.g. transactions24) "
+        "— that is what produces the self-assessed VAT in e-MTA's line 4 — and that "
+        "the deductible side is included in inputVatTotal (line 5). For full "
+        "deduction the two cancel; the refund/payable is unchanged."
     ]
     if not bool(data.get("input_vat_full_deduction", True)):
         warnings.append(
-            "input_vat_full_deduction is false: the reverse charge does NOT net out. "
-            "The non-deductible portion of the self-assessed VAT is still payable and "
-            "must be added (e.g. via adjustmentsPlus / line 10). Review before filing."
+            "input_vat_full_deduction is false: include only the DEDUCTIBLE portion "
+            "of the self-assessed VAT in inputVatTotal (line 5); line 4 still "
+            "carries the full reverse-charge output, so the non-deductible part is "
+            "payable. Review the split before filing."
         )
     return warnings
 

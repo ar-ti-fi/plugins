@@ -55,9 +55,10 @@ WARN items are listed for the reviewer to confirm but do not stop the run.
 
 Once the gate is green (no open BLOCK):
 
-- Compute `declaration_body` with **real KMD2 element names** (bases by rate +
-  `inputVatTotal` + reverse-charge lines 6/7). Do **not** supply total VAT / line 12 /
-  line 13 — e-MTA computes them.
+- Compute `declaration_body` with **real KMD2 element names**: bases by rate — with
+  reverse-charge/IC acquisition bases INCLUDED in the rate lines — plus `inputVatTotal`
+  (incl. the deductible RC VAT) and the informative acquisition breakout on lines 6/7.
+  Do **not** supply total VAT / line 12 / line 13 — e-MTA computes them.
 - Aggregate KMD INF partners (threshold EUR 1,000) into `sales_annex` / `purchases_annex`.
 
 Build the input JSON (see `scripts/input_schema_kmd.json` for the full example):
@@ -82,7 +83,8 @@ Build the input JSON (see `scripts/input_schema_kmd.json` for the full example):
 - Pass `expected_vat_payable` (or `expected_vat_overpaid`) — the figure you derived from
   the GL tie-out — so the generator asserts its computation matches (check 1).
 - Set `input_vat_full_deduction: false` if the taxpayer's input VAT is only partly
-  deductible; the generator then warns that the reverse charge does not net out.
+  deductible; line 5 then carries only the deductible portion while line 4 still
+  self-assesses the full reverse-charge VAT — the generator warns to review the split.
 - Omit an annex entirely when no partner reaches EUR 1,000 (the generator sets
   `noSales` / `noPurchases` = true).
 

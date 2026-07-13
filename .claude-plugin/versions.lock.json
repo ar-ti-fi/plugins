@@ -36,8 +36,8 @@
     "content_hash": "f83d9c6f09a643328f57a0b6da414f4ab87bf935223c18365ae3d2e293214fff"
   },
   "artifi-ee-vat-declaration": {
-    "version": "2.0.0",
-    "content_hash": "3db4fb0475666f4f6ae788a26f4cfcc7b4a686a4dd3fe63267f89e403068f67a"
+    "version": "2.1.0",
+    "content_hash": "ba769517a4dcc16d1d53e76911616da53ba0e26a280b060972e06b65084cdc02"
   },
   "artifi-ee-year-end-bookkeeping": {
     "version": "1.0.0",
