@@ -12,7 +12,7 @@ Common reconciliation issues and how to resolve them.
 
 | Cause | How to Check | Fix |
 |-------|-------------|-----|
-| Invoices not posted | `list_entities("transaction", {"vendor_id": <id>, "transaction_type": "AP_INVOICE", "status": "draft"})` | Post the invoices first |
+| Invoices not posted | `query("transaction", filters={"vendor_id": <id>, "transaction_type": "AP_INVOICE", "status": "draft"})` | Post the invoices first |
 | Invoices assigned to wrong party | `get_entity("transaction", id=<inv_id>)` -- check `vendor_id`/`customer_id` | Update the invoice party assignment |
 | No invoices exist | No invoice results for this party | Post the corresponding bill/invoice |
 | Payments in wrong currency | Compare `currency` on payment vs invoice | Check if FX matching is needed |
@@ -154,7 +154,7 @@ submit("reconciliation", "unmatch", {
 - Manual match applied while agent is running
 
 **Fix:**
-1. Check reconciliation items: `list_entities("reconciliation_item", {"source_transaction_id": <payment_id>})`
+1. Check reconciliation items: `query("reconciliation_item", filters={"source_transaction_id": <payment_id>})`
 2. Identify the duplicate
 3. Unmatch the incorrect one
 4. Agent concurrency is limited to 1 run at a time to prevent this

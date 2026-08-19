@@ -48,7 +48,7 @@ Fetch all employees included in this payroll run:
 
 ```python
 # Get employees for this entity
-employees = list_entities("employee", {
+employees = query("employee", filters={
     "legal_entity_id": <entity_id>,
     "status": "active"
 })
@@ -58,19 +58,19 @@ For each employee, fetch:
 
 ```python
 # Compensation (salary amount)
-comp = search("employee_compensation", "", {
+comp = query("employee_compensation", filters={
     "employee_id": <emp_id>,
     "effective_to": null
 })
 
 # Tax settings (pension tier, basic exemption)
-tax = search("employee_tax_settings", "", {
+tax = query("employee_tax_settings", filters={
     "employee_id": <emp_id>,
     "effective_to": null
 })
 
 # Voluntary deductions (III pillar, court orders, etc.)
-deductions = search("employee_deduction", "", {
+deductions = query("employee_deduction", filters={
     "employee_id": <emp_id>,
     "is_active": true
 })
@@ -82,7 +82,7 @@ deductions = search("employee_deduction", "", {
 ### Step 3: Load Tax Rates
 
 ```python
-jurisdictions = list_entities("payroll_tax_jurisdiction", {
+jurisdictions = query("payroll_tax_jurisdiction", filters={
     "country_code": "EE",
     "is_active": true
 })
@@ -113,7 +113,7 @@ Build `tax_lines` array per employee with entries for each tax/deduction. See **
 
 ### Step 5: Submit Calculation
 
-> **Tip**: run `get_workflow_schema('payroll_run', 'submit_calculation')` first to confirm the live contract before building the payload.
+> **Tip**: run `workflow(action='schema', object_type='payroll_run', operation='submit_calculation')` first to confirm the live contract before building the payload.
 >
 > **Critical**: the validator buckets `tax_lines` by `category`, NOT by `side`. Each line's `category` MUST be exactly `'employee_deduction'` (employee-withheld) or `'employer_tax'` (employer-paid). The `side` field (`'CR'` | `'BOTH'`) only drives GL posting and is not read for validation. Field names like `is_employee`, `employee_amount`, etc. are ignored.
 

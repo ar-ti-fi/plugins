@@ -29,10 +29,10 @@ You MUST verify each checkpoint before proceeding to the next step. If a checkpo
 
 ### Step 1: Check Prerequisites & Determine Company Category
 
-1. Verify year-end close: `list_entities("fiscal_period", {"legal_entity_id": ID})` — all 12 periods must be status "closed"
+1. Verify year-end close: `query("fiscal_period", filters={"legal_entity_id": ID})` — all 12 periods must be status "closed"
 2. Fetch balance sheet: `generate_report("balance_sheet", {"legal_entity_id": ID, "as_of_date": "YYYY-12-31"})` — get total assets
 3. Fetch income statement: `generate_report("income_statement", {"legal_entity_id": ID, "start_date": "YYYY-01-01", "end_date": "YYYY-12-31"})` — get total revenue
-4. Count employees: `list_entities("employee", {"legal_entity_id": ID})` — count active employees
+4. Count employees: `query("employee", filters={"legal_entity_id": ID})` — count active employees
 
 Apply size thresholds (2 of 3 criteria) from **references/rtj-standards.md** to determine: Micro, Small, Medium, or Large.
 
@@ -57,8 +57,8 @@ Fetch all data needed for the report. **Comparative figures (prior year) are REQ
 **Supporting data:**
 7. **AR aging**: `generate_report("ar_aging", ...)` — for receivables note
 8. **AP aging**: `generate_report("ap_aging", ...)` — for payables note
-9. **Fixed assets**: `list_entities("fixed_asset", ...)` — for PP&E note and depreciation
-10. **Bank accounts**: `list_entities("bank_account", ...)` — for cash note
+9. **Fixed assets**: `query("fixed_asset", ...)` — for PP&E note and depreciation
+10. **Bank accounts**: `query("bank_account", ...)` — for cash note
 11. **Employee list**: already fetched in Step 1
 
 **CP4 checkpoint**: Confirm ALL prior year data is available. Cross-validate prior year figures against the previously filed annual report — the prior year closing balances in this report must match the prior year figures as filed. If discrepancies exist, investigate and resolve before proceeding (e.g., prior year adjustments, reclassifications). This ensures that 2025 entries have been recorded on the same principles and to the same accounts as in the prior year.

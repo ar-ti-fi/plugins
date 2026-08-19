@@ -23,7 +23,7 @@ When you're monitoring a portfolio of borrowers — typical for bank relationshi
 ### Step 1: Enumerate entities in scope
 
 ```
-list_entities("legal_entity", {is_active: true})
+query("legal_entity", filters={is_active: true})
 ```
 
 If the user has narrowed the watchlist (e.g., "just the manufacturing portfolio"), filter accordingly. Otherwise default to all active entities the connection has read access to.

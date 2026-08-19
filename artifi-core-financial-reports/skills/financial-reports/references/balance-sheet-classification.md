@@ -5,7 +5,7 @@ How to classify accounts into balance sheet sections using dynamic account prope
 ## Account Discovery
 
 ```
-list_entities("account", {
+query("account", filters={
     "legal_entity_id": ID,
     "is_active": true
 })

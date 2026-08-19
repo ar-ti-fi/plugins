@@ -94,7 +94,7 @@ Repeat for each of 12 months. For a team of 10 employees with 5 cost categories 
 Fetch active employees and their compensation to calculate budget amounts:
 
 ```python
-employees = list_entities("employee", {
+employees = query("employee", filters={
     "legal_entity_id": <entity_id>,
     "status": "active"
 })

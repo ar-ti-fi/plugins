@@ -33,7 +33,7 @@ This step is CRITICAL. Do NOT hardcode tax code names. Always discover and class
 
 1. Fetch the entity's active Estonian tax codes:
    ```
-   list_entities("tax_code", {"legal_entity_id": ID, "country_code": "EE", "is_active": true})
+   query("tax_code", filters={"legal_entity_id": ID, "country_code": "EE", "is_active": true})
    ```
 
 2. For each tax code, apply the classification rules from **references/tax-codes-ee.md**:
@@ -56,7 +56,7 @@ Fetch all posted transactions for the reporting period:
 
 1. **AR invoices** (sales):
    ```
-   list_entities("transaction", {
+   query("transaction", filters={
        "legal_entity_id": ID,
        "transaction_type": "ar_invoice",
        "status": "posted"
@@ -66,7 +66,7 @@ Fetch all posted transactions for the reporting period:
 
 2. **AP invoices** (purchases):
    ```
-   list_entities("transaction", {
+   query("transaction", filters={
        "legal_entity_id": ID,
        "transaction_type": "ap_invoice",
        "status": "posted"
@@ -76,7 +76,7 @@ Fetch all posted transactions for the reporting period:
 
 3. **Credit notes** and **journal entries** with VAT impact:
    ```
-   list_entities("transaction", {
+   query("transaction", filters={
        "legal_entity_id": ID,
        "status": "posted"
    }, date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"}},
@@ -151,8 +151,8 @@ Following **references/kmd-inf-annex.md**:
 
 1. **Part A (Sales)**: Group AR invoices by customer. For each customer where total > EUR 1,000:
    ```
-   aggregate_entities("transaction", ["party_name"], {"amount": "sum", "id": "count"},
-       {"legal_entity_id": ID, "transaction_type": "ar_invoice"},
+   query("transaction", group_by=["party_name"], aggregates={"amount": "sum", "id": "count"},
+       filters={"legal_entity_id": ID, "transaction_type": "ar_invoice"},
        date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"}})
    ```
    Collect per partner: registration code, name, taxable amount (excl. VAT), tax rate.

@@ -11,7 +11,7 @@ Activate when the user mentions: year-end bookkeeping, aasta raamatupidamine, bu
 
 Ask these questions in plain, friendly language:
 
-1. **Which company are we working on?** Ask for the legal entity ID. If the user doesn't know it, help them find it: `list_entities("legal_entity", {})` and pick the right one.
+1. **Which company are we working on?** Ask for the legal entity ID. If the user doesn't know it, help them find it: `query("legal_entity", filters={})` and pick the right one.
 
 2. **Which fiscal year?** e.g., 2025. This determines the period we're building accounting for.
 
@@ -55,7 +55,7 @@ Explain to the user: "A chart of accounts is the list of categories where we'll 
 **If the user has a chart of accounts** (from Merit Aktiva, e-Financials, or another system):
 1. Ask them to paste or upload it
 2. Review the accounts — use **references/estonian-coa-mapping.md** to understand Estonian CoA conventions
-3. Check if the entity already has template accounts: `list_entities("account", {"legal_entity_id": ENTITY_ID})`
+3. Check if the entity already has template accounts: `query("account", filters={"legal_entity_id": ENTITY_ID})`
 4. If template accounts exist, they need to be removed first before importing the client's CoA
 5. Map each account to a standard type: asset, liability, equity, revenue, or expense
 6. Import: `manage_imports(action="accounts", records=[...], legal_entity_id=ENTITY_ID)`
@@ -66,7 +66,7 @@ Explain to the user: "A chart of accounts is the list of categories where we'll 
 3. Add any missing accounts specific to their business (e.g., freelancers may need specific expense categories)
 4. See **references/estonian-coa-mapping.md** for guidance on customizing by business type
 
-**Verify**: `list_entities("account", {"legal_entity_id": ENTITY_ID})` — confirm accounts exist for all 5 types: asset, liability, equity, revenue, expense.
+**Verify**: `query("account", filters={"legal_entity_id": ENTITY_ID})` — confirm accounts exist for all 5 types: asset, liability, equity, revenue, expense.
 
 **CP1 checkpoint**: All account types present.
 
@@ -219,7 +219,7 @@ Explain: "Before we can record these transactions, I need to set up the people a
    - Money going OUT to this counterparty → likely a **vendor** (supplier)
    - Money coming IN from this counterparty → likely a **customer**
    - Exceptions: tax refunds (EMTA inflow = still a vendor), loan disbursements, transfers between own accounts
-3. Check which already exist: `search("vendor", "counterparty_name")`, `search("customer", "counterparty_name")`
+3. Check which already exist: `query("vendor", query="counterparty_name")`, `query("customer", query="counterparty_name")`
 4. Present a list of NEW counterparties to the user:
    - "I found these new suppliers/vendors that aren't in the system yet:"
    - Table: Name | Type (Vendor/Customer) | Appears X times | Total amount
@@ -379,7 +379,7 @@ Present a summary: "Everything checks out!" or "I found some discrepancies we ne
 ### Step 17: Period Close and Annual Report Handoff
 
 1. Close all 12 fiscal periods in order (January through December)
-2. **CP9 checkpoint**: `list_entities("fiscal_period", {"legal_entity_id": ENTITY_ID})` — all 12 periods status "closed"
+2. **CP9 checkpoint**: `query("fiscal_period", filters={"legal_entity_id": ENTITY_ID})` — all 12 periods status "closed"
 3. Run the annual report handoff checklist from **references/annual-report-handoff.md**:
    - All periods closed
    - Trial balance balances

@@ -7,7 +7,7 @@ Before running the annual report plugin (`/artifi-ee:prepare-annual-report`), ve
 ### 1. All Fiscal Periods Closed (maps to Annual Report CP1)
 
 ```
-list_entities("fiscal_period", {"legal_entity_id": ENTITY_ID})
+query("fiscal_period", filters={"legal_entity_id": ENTITY_ID})
 ```
 
 - All 12 monthly periods (January through December) must have status "closed"

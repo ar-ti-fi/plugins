@@ -48,12 +48,14 @@ You MUST verify each checkpoint before proceeding. If a checkpoint fails, STOP a
 Fetch the balance of the source account(s) for the allocation period:
 
 ```python
-# Get account balance
-balances = search("gl_balance", "", {
+# Get account balance (no gl_balance entity -- aggregate transaction_line
+# debits/credits for the account over the period instead)
+balances = query("transaction_line", filters={
     "legal_entity_id": <entity_id>,
-    "account_number": "<source_account>",
-    "period_name": "<period>"
-})
+    "account_number": "<source_account>"
+}, date_filters={
+    "transaction_date": {"from": "<period_start>", "to": "<period_end>"}
+}, aggregates={"debit": "sum", "credit": "sum"})
 ```
 
 Or use `generate_report` for a trial balance if allocating across multiple accounts.
@@ -73,7 +75,7 @@ For data-driven methods, fetch the relevant data:
 
 ```python
 # Example: headcount by department
-employees = search("employee", "", {
+employees = query("employee", filters={
     "legal_entity_id": <entity_id>,
     "status": "active"
 })
@@ -138,7 +140,7 @@ Find the source transaction. The user may provide a transaction number, or you c
 
 ```python
 # Search for the transaction
-results = search("transaction", "<transaction_number or description>", {
+results = query("transaction", query="<transaction_number or description>", filters={
     "legal_entity_id": <entity_id>
 })
 ```
@@ -162,14 +164,24 @@ Identify the **expense/revenue lines** (not control accounts like AP/AR) — tho
 
 Check if this transaction (or specific accounts from it) has already been allocated:
 
+Allocation runs aren't a queryable entity (there is no registered `query()`
+type for them, even though `submit("allocation_run", ...)` is a valid
+workflow). Use the allocation summary report to see recent activity for this
+entity/rule instead:
+
 ```python
-# Search for existing allocation runs from this source
-results = search("allocation_run", "", {
-    "source_transaction_id": <tx_id>
+# Review recent allocations for the period
+results = generate_report("allocation_summary", {
+    "legal_entity_id": <entity_id>,
+    "start_date": "<period_start>",
+    "end_date": "<period_end>"
 })
 ```
 
-**CP6 checkpoint**: If any active (non-voided) allocations exist for the same account, inform the user of the remaining allocatable balance. If fully allocated, the user must void the existing allocation first.
+**CP6 checkpoint**: If any active (non-voided) allocations exist for the same
+account, inform the user of the remaining allocatable balance. The backend
+also validates this at submit time and will reject a run that over-allocates
+an already fully-allocated account.
 
 ### Step 3: Determine Which Line(s) to Allocate
 
@@ -291,7 +303,7 @@ This creates a reversing GL entry and frees up the source account for re-allocat
 - **"Source line account(s) X do not appear in the source transaction's GL lines"**: The source line in the allocation uses the wrong account. Check the source transaction's GL lines and use the correct account number.
 - **"Account X from source transaction is already fully allocated"**: The source document has already been allocated. The user must void the existing allocation before creating a new one.
 - **"Source amount X exceeds remaining unallocated balance"**: Only part of the source line is available. Reduce the allocation amount or void existing allocations.
-- **Account not found**: Suggest the user check the chart of accounts. Use `search("account", "<number>")`.
+- **Account not found**: Suggest the user check the chart of accounts. Use `query("account", query="<number>")`.
 - **Unbalanced lines**: Recalculate. Adjust the largest target line to absorb rounding differences.
 - **Period closed**: The fiscal period must be open for posting.
 - **Run not in draft**: If the run is already calculated, lines will be replaced (recalculation is supported).

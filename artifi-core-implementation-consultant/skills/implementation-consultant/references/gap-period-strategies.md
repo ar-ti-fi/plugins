@@ -63,7 +63,7 @@ The connector pulls all transaction types in dependency order and posts them to 
 3. Map columns to Arfiti transaction format
 4. Validate: `manage_imports(action="transactions", records=[...], validate_only=true)`
 5. Import: `manage_imports(action="transactions", records=[...], legal_entity_id=ENTITY_ID)`
-6. For >50 records, monitor: `get_import_status(import_id=...)`
+6. For >50 records, monitor: `manage_imports(action="status", import_id=...)`
 
 ### What to watch for:
 - **Duplicate prevention**: Use `on_duplicate="skip"` to avoid duplicating transactions that may have been included in the opening balance
@@ -80,7 +80,7 @@ For each month in the gap period:
 
 1. **Upload statement**: Ask user for bank statement (CSV preferred, PDF acceptable)
 2. **Parse lines**: Extract date, amount, counterparty, description
-3. **Identify new counterparties**: Check against existing vendors/customers via `search()`
+3. **Identify new counterparties**: Check against existing vendors/customers via `query()`
 4. **Create master data**: New vendors/customers after user confirmation
 5. **Classify**: Apply transaction type rules:
    | Pattern | Type |
@@ -117,7 +117,7 @@ For large datasets (>500 transactions), the admin dashboard provides a more effi
    - Required columns: transaction_type, reference_number, transaction_date, amount, account_number
    - Optional: vendor_name, customer_name, description, currency
 3. User uploads via admin dashboard (Settings → Data Import)
-4. Monitor progress: `get_import_status(import_id=...)`
+4. Monitor progress: `manage_imports(action="status", import_id=...)`
 5. Review results: imported count, skipped count, error details
 
 ### When to combine strategies:

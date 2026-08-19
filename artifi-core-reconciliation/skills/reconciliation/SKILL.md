@@ -31,7 +31,7 @@ Before starting, confirm with the user:
 
 You MUST verify each checkpoint before proceeding. If a checkpoint fails, STOP and inform the user.
 
-- **CP1**: Legal entity exists and has posted transactions (`list_entities("transaction", {"legal_entity_id": <id>, "status": "posted"})` returns results)
+- **CP1**: Legal entity exists and has posted transactions (`query("transaction", filters={"legal_entity_id": <id>, "status": "posted"})` returns results)
 - **CP2**: For Mode 1 -- agent run completed successfully (check agent instance status)
 - **CP3**: All proposed manual matches are valid -- amounts sum correctly, same party, invoice has amount_due > 0
 - **CP4**: User has reviewed and confirmed the match preview before applying
@@ -46,20 +46,18 @@ You MUST verify each checkpoint before proceeding. If a checkpoint fails, STOP a
 Load the reconciliation landscape in parallel:
 
 ```python
-# Get unreconciled payment and invoice counts
-batch_lookup([
-    {"entity_type": "transaction", "filters": {
-        "legal_entity_id": <id>, "transaction_type": "AP_PAYMENT",
-        "recon_status_is_null": true
-    }, "limit": 100},
-    {"entity_type": "transaction", "filters": {
-        "legal_entity_id": <id>, "transaction_type": "AR_PAYMENT",
-        "recon_status_is_null": true
-    }, "limit": 100}
-])
+# Get unreconciled payment and invoice counts -- make these query() calls in parallel
+query("transaction", filters={
+    "legal_entity_id": <id>, "transaction_type": "AP_PAYMENT",
+    "recon_status_is_null": true
+}, limit=100)
+query("transaction", filters={
+    "legal_entity_id": <id>, "transaction_type": "AR_PAYMENT",
+    "recon_status_is_null": true
+}, limit=100)
 
 # Get totals by recon status
-aggregate_entities("transaction",
+query("transaction",
     group_by=["transaction_type", "recon_status"],
     aggregates={"id": "count", "amount": "sum"},
     filters={"legal_entity_id": <id>,
@@ -130,7 +128,7 @@ Group unmatched items by party to find patterns:
 
 ```python
 # Unmatched AP payments by vendor
-aggregate_entities("transaction",
+query("transaction",
     group_by=["vendor_id"],
     aggregates={"id": "count", "amount": "sum"},
     filters={"legal_entity_id": <id>, "transaction_type": "AP_PAYMENT",
@@ -138,7 +136,7 @@ aggregate_entities("transaction",
 )
 
 # Unmatched AR payments by customer
-aggregate_entities("transaction",
+query("transaction",
     group_by=["customer_id"],
     aggregates={"id": "count", "amount": "sum"},
     filters={"legal_entity_id": <id>, "transaction_type": "AR_PAYMENT",
@@ -150,11 +148,11 @@ For each party with unmatched payments, load BOTH payments and open invoices:
 
 ```python
 # For a specific vendor
-payments = list_entities("transaction", filters={
+payments = query("transaction", filters={
     "legal_entity_id": <id>, "vendor_id": <party_id>,
     "transaction_type": "AP_PAYMENT", "recon_status_is_null": true
 })
-invoices = list_entities("transaction", filters={
+invoices = query("transaction", filters={
     "legal_entity_id": <id>, "vendor_id": <party_id>,
     "transaction_type": "AP_INVOICE", "status": "posted"
 })
@@ -269,7 +267,7 @@ Compare before and after:
 
 ```python
 # Re-check totals
-aggregate_entities("transaction",
+query("transaction",
     group_by=["transaction_type", "recon_status"],
     aggregates={"id": "count", "amount": "sum"},
     filters={"legal_entity_id": <id>,
@@ -306,10 +304,10 @@ Ask the user for the payment transaction ID or search for it:
 
 ```python
 # If user provides a transaction number
-payment = search("transaction", "<number>", filters={"legal_entity_id": <id>})
+payment = query("transaction", query="<number>", filters={"legal_entity_id": <id>})
 
 # Or list recent unmatched payments
-list_entities("transaction", filters={
+query("transaction", filters={
     "legal_entity_id": <id>,
     "transaction_type": ["AP_PAYMENT", "AR_PAYMENT"],
     "recon_status_is_null": true
@@ -322,7 +320,7 @@ Ask the user for invoice ID(s) or search:
 
 ```python
 # Search invoices for the same party
-invoices = list_entities("transaction", filters={
+invoices = query("transaction", filters={
     "legal_entity_id": <id>,
     "vendor_id": <payment.vendor_id>,  # or customer_id
     "transaction_type": "AP_INVOICE",  # or AR_INVOICE
@@ -374,7 +372,7 @@ Report the result.
 
 ```python
 # Payment recon status breakdown
-aggregate_entities("transaction",
+query("transaction",
     group_by=["transaction_type", "recon_status"],
     aggregates={"id": "count", "amount": "sum"},
     filters={"legal_entity_id": <id>,
@@ -383,7 +381,7 @@ aggregate_entities("transaction",
 )
 
 # Aging of unmatched payments
-aggregate_entities("transaction",
+query("transaction",
     group_by=["transaction_type"],
     aggregates={"id": "count", "amount": "sum"},
     filters={"legal_entity_id": <id>,
@@ -437,7 +435,7 @@ This reverses all financial updates: invoice `amount_due` restored, payment `rec
 
 ## Error Handling
 
-- **"Payment transaction not found"**: Double-check the transaction ID. Use `search("transaction", "<number>")` to find it.
+- **"Payment transaction not found"**: Double-check the transaction ID. Use `query("transaction", query="<number>")` to find it.
 - **"Transaction is already fully reconciled"**: The payment was already matched. Use `get_entity("transaction", id=<id>)` to see its current status. To change the match, unmatch first, then re-match.
 - **"Invoice belongs to different vendor/customer"**: Payment and invoice must be for the same party. Check party assignments on both transactions.
 - **"Applied amount exceeds amount_due"**: The invoice doesn't have enough remaining balance. Check `amount_due` on the invoice -- it may have been partially paid already.
@@ -448,7 +446,7 @@ This reverses all financial updates: invoice `amount_due` restored, payment `rec
 
 ## Important Rules
 
-1. **Always check the schema first** -- before any `submit()` call, run `get_workflow_schema("reconciliation", "match")` to discover the exact required fields.
+1. **Always check the schema first** -- before any `submit()` call, run `workflow(action='schema', object_type="reconciliation", operation="match")` to discover the exact required fields.
 2. **Never guess amounts** -- always calculate from actual transaction data. Show the math to the user.
 3. **One confirmation per batch** -- group related matches (same party) and confirm together, don't ask for each individual match.
 4. **Partial is OK** -- if a payment only partially covers an invoice, apply what we have. The invoice stays open with reduced `amount_due` for future matching.

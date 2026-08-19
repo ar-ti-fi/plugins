@@ -24,7 +24,7 @@ Produce a complete per-investor statement showing their journey in the fund.
 
 Ask the user for the investor name. Look them up:
 ```
-search("customer", "<investor name>")
+query("customer", query="<investor name>")
 ```
 
 Confirm the right investor by name + tax ID. Capture share class.
@@ -32,7 +32,7 @@ Confirm the right investor by name + tax ID. Capture share class.
 ### Step 2: Pull transaction history
 
 ```
-list_entities("transaction", {
+query("transaction", filters={
     "legal_entity_id": FUND_ID,
     "customer_id": INVESTOR_ID
 }, include_lines=True)

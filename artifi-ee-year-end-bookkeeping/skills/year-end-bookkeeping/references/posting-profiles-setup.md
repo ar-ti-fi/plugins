@@ -72,7 +72,7 @@ Standard Estonian VAT rate: 22% (as of 2025).
 
 After configuration, verify each profile works:
 
-1. `batch_lookup([{"entity_type": "account", "filters": {"legal_entity_id": ENTITY_ID, "is_active": true}}])`
+1. `query("account", filters={"legal_entity_id": ENTITY_ID, "is_active": true})`
 2. Check that each account referenced in profiles exists and is active
 3. Test with a small transaction if unsure
 

@@ -19,7 +19,7 @@ Before starting, determine:
 NEVER hardcode account numbers or names. Every company has a different chart of accounts. Always discover accounts by their properties:
 
 ```
-list_entities("account", {
+query("account", filters={
     "legal_entity_id": ID,
     "account_type": "asset",       # asset, liability, equity, revenue, expense
     "account_category": "cash",    # cash, receivable, inventory, fixed_asset, payable, etc.
@@ -151,7 +151,7 @@ Use `account_type` and `account_category` to classify accounts into report secti
 1. Ask the user which dimension to analyze: department, project, cost center, or other custom dimension
 2. Discover available dimensions:
    ```
-   list_entities("dimension_value", {"legal_entity_id": ID})
+   query("dimension_value", filters={"legal_entity_id": ID})
    ```
 3. Fetch dimension analysis report
 4. Present P&L breakdown by dimension value (see **references/dimension-reporting.md**)

@@ -1,7 +1,7 @@
 {
   "name": "artifi-core-reconciliation",
   "description": "Payment-to-invoice reconciliation plugin. Runs automated 6-pass matching via the reconciliation agent, then guides manual matching for complex cases — N:N splits, partial payments, rounding write-offs. Works with AR (customer receipts) and AP (vendor payments).",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Arfiti"
   }

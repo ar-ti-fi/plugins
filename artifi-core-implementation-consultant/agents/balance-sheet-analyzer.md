@@ -27,7 +27,7 @@ Handle common formats:
 
 ### 2. Map to Chart of Accounts
 
-You will be given the entity's chart of accounts (from `list_entities("account", {"legal_entity_id": ID})`).
+You will be given the entity's chart of accounts (from `query("account", filters={"legal_entity_id": ID})`).
 
 For each extracted line:
 1. Try exact match on account number

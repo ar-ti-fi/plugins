@@ -40,7 +40,7 @@ Strike NAV for a given fund and date. This is the demo's marquee command and the
 #### Step 1: Resolve fund + strike date
 
 ```
-list_entities("legal_entity", {})
+query("legal_entity")
 ```
 
 Pick the fund entity. Confirm strike date (typically last business day of the period).

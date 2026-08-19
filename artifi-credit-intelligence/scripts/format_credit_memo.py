@@ -4,7 +4,7 @@ format_credit_memo.py — render the credit-intelligence input JSON into a
 consistently-formatted markdown credit memo.
 
 The skill builds an input JSON per input_schema_credit_memo.json from
-generate_report() + list_entities() calls. This script renders it. Keeping
+generate_report() + query() calls. This script renders it. Keeping
 the formatting deterministic ensures the same data always produces the
 same memo — important for portfolio review and audit trails.
 

@@ -8,17 +8,17 @@ The number and detail of notes depends on company size category.
 |---|---|---|---|
 | 1 | Accounting policies | Basis of preparation, measurement bases | Standard text |
 | 2 | Contingent liabilities | Guarantees, legal claims | Manual input |
-| 3 | Related party transactions | Board/shareholder transactions | `search("vendor", {"query": "<name>"})` |
+| 3 | Related party transactions | Board/shareholder transactions | `query("vendor", query="<name>")` |
 
 ## Small Company Notes (up to 9)
 
 | Note | Topic | Content | MCP Data Source |
 |---|---|---|---|
 | 1 | Accounting policies | Summary of significant policies | Standard text template |
-| 2 | Cash and cash equivalents | Bank balances, restricted cash | `list_entities("bank_account", {"legal_entity_id": ID})` |
+| 2 | Cash and cash equivalents | Bank balances, restricted cash | `query("bank_account", filters={"legal_entity_id": ID})` |
 | 3 | Receivables and prepayments | Trade receivables, tax receivables, prepaid | `generate_report("ar_aging", {"legal_entity_id": ID, "as_of_date": "YYYY-12-31"})` |
-| 4 | Property, plant and equipment | Cost, depreciation, NBV, movements | `list_entities("fixed_asset", {"legal_entity_id": ID})` |
-| 5 | Intangible assets | Goodwill, licenses, development costs | `list_entities("fixed_asset", {"legal_entity_id": ID})` filtered by type |
+| 4 | Property, plant and equipment | Cost, depreciation, NBV, movements | `query("fixed_asset", filters={"legal_entity_id": ID})` |
+| 5 | Intangible assets | Goodwill, licenses, development costs | `query("fixed_asset", filters={"legal_entity_id": ID})` filtered by type |
 | 6 | Loans and borrowings | Terms, maturity, interest rates | GL detail for accounts 3000-3099, 3600-3699 |
 | 7 | Trade and other payables | Vendor balances, tax, accruals | `generate_report("ap_aging", {"legal_entity_id": ID, "as_of_date": "YYYY-12-31"})` |
 | 8 | Related party transactions | Shareholders, board, key management | Query by dimension or vendor name |
@@ -30,7 +30,7 @@ All of the above, plus:
 
 | Note | Topic | Content | MCP Data Source |
 |---|---|---|---|
-| 10 | Revenue breakdown | Revenue by EMTAK activity code | `aggregate_entities("transaction", ["party_name"], {"amount": "sum"}, {"transaction_type": "ar_invoice"})` |
+| 10 | Revenue breakdown | Revenue by EMTAK activity code | `query("transaction", group_by=["party_name"], aggregates={"amount": "sum"}, filters={"transaction_type": "ar_invoice"})` |
 | 11 | Personnel expenses | Wages, social tax, pension, avg employees | GL detail for accounts 5300-5399 |
 | 12 | Financial income/expenses | Interest, FX gains/losses | GL detail for accounts 6000-6999 |
 | 13 | Income tax | CIT on distributions, deferred tax | GL detail for account 7000 |
@@ -48,7 +48,7 @@ All of the above, plus:
 | Under construction | X | +/- | +/- | X | - | - | - | - | X |
 | **Total** | **X** | | | **X** | **X** | **X** | | **X** | **X** |
 
-Group `list_entities("fixed_asset", ...)` results by `asset_category`:
+Group `query("fixed_asset", ...)` results by `asset_category`:
 - Opening cost = acquisition_cost for assets acquired before period start
 - Additions = assets with acquisition_date within period
 - Disposals = assets with disposal_date within period

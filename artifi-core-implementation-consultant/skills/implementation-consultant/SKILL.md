@@ -11,7 +11,7 @@ Activate when the user mentions: migrate to Arfiti, ERP migration, data migratio
 
 Ask these questions in plain, friendly language. Explain WHY each matters.
 
-1. **Which company are we working on?** Help find the legal entity: `list_entities("legal_entity", {})`
+1. **Which company are we working on?** Help find the legal entity: `query("legal_entity", filters={})`
 
 2. **Are you starting from scratch or migrating from an existing system?**
    - If migrating: "Which accounting system are you coming from? (Merit Aktiva, QuickBooks Online, SmartAccounts, or something else?)"
@@ -21,7 +21,7 @@ Ask these questions in plain, friendly language. Explain WHY each matters.
 
 4. **What does your business do?** "Knowing your industry helps me anticipate what accounts, vendors, and transaction types you'll need. For example, a SaaS company needs recurring revenue tracking, while a consulting firm needs project-based accounting."
 
-5. **Do you already have a chart of accounts set up in Arfiti?** Check: `list_entities("account", {"legal_entity_id": ENTITY_ID})` — if >0, note the count and template used.
+5. **Do you already have a chart of accounts set up in Arfiti?** Check: `query("account", filters={"legal_entity_id": ENTITY_ID})` — if >0, note the count and template used.
 
 ### Determine the Migration Path
 
@@ -92,7 +92,7 @@ You MUST verify each checkpoint before proceeding. If a checkpoint fails, STOP a
 ### Step 1: Check Existing Setup
 
 ```
-list_entities("account", {"legal_entity_id": ENTITY_ID})
+query("account", filters={"legal_entity_id": ENTITY_ID})
 manage_onboarding(action="get_checklist", category="accounting")
 ```
 
@@ -157,7 +157,7 @@ Guide the user through each data type sequentially. For each type:
 4. Validate first: `manage_imports(action="<type>", records=[...], legal_entity_id=ENTITY_ID, validate_only=true)`
 5. Fix any validation errors
 6. Import: `manage_imports(action="<type>", records=[...], legal_entity_id=ENTITY_ID)`
-7. For async imports (>50 records): monitor with `get_import_status(import_id=...)`
+7. For async imports (>50 records): monitor with `manage_imports(action="status", import_id=...)`
 
 **Import order** (dependencies matter):
 1. **Dimension types** (if using dimensions): departments, projects, cost centers
@@ -301,7 +301,7 @@ Explain the clearing account: "Account 3300 (Retained Earnings) absorbs any smal
 If subledger records were created, verify:
 - `generate_report("ar_aging", {"legal_entity_id": ENTITY_ID, "as_of_date": "CUTOFF_DATE"})` — shows individual invoices
 - `generate_report("ap_aging", {"legal_entity_id": ENTITY_ID, "as_of_date": "CUTOFF_DATE"})` — shows individual bills
-- `list_entities("fixed_asset", {"legal_entity_id": ENTITY_ID})` — shows asset register
+- `query("fixed_asset", filters={"legal_entity_id": ENTITY_ID})` — shows asset register
 
 ---
 
@@ -355,7 +355,7 @@ For CSV import:
 2. User provides transaction CSV
 3. Validate: `manage_imports(action="transactions", records=[...], validate_only=true)`
 4. Import: `manage_imports(action="transactions", records=[...], legal_entity_id=ENTITY_ID)`
-5. Monitor if async: `get_import_status(import_id=...)`
+5. Monitor if async: `manage_imports(action="status", import_id=...)`
 
 **Strategy B — Bank Statement Processing:**
 
@@ -394,7 +394,7 @@ Ask about source documents (bills, invoices) for the gap period — same as year
 1. Provide template format via `manage_onboarding(action="get_support", support_type="import_transactions")`
 2. Guide user to prepare CSV in the required format
 3. Direct them to admin dashboard for upload
-4. Monitor: `get_import_status(import_id=...)`
+4. Monitor: `manage_imports(action="status", import_id=...)`
 
 **CP4 checkpoint**: Gap period transactions posted. Run trial balance at today's date — debits = credits.
 
@@ -444,7 +444,7 @@ Run all reports and checks:
 
 7. **Fixed Asset Reconciliation** (if assets were imported):
    ```
-   reconcile_fixed_assets_to_gl(legal_entity_id=ENTITY_ID)
+   generate_report("fa_gl_reconciliation", {"legal_entity_id": ENTITY_ID})
    ```
    **CP5d**: No material variances.
 
@@ -517,7 +517,7 @@ If all checks pass:
 | "Period is closed" | Trying to post to a closed period | Reopen the period, post, then re-close |
 | "Debits don't equal credits" | Unbalanced opening balance or journal entry | Check account mapping, fix amounts, re-import |
 | "Duplicate transaction" | Same record imported twice | Check existing records, use `on_duplicate="skip"` |
-| "Import timeout" | Large batch exceeded timeout | Use async import (>50 records) and poll with `get_import_status()` |
+| "Import timeout" | Large batch exceeded timeout | Use async import (>50 records) and poll with `manage_imports(action="status", import_id=...)` |
 | Opening balance mismatch | Account mapping error | Review mapping table, correct and re-import affected lines |
 | Bank balance variance | Missing or extra transactions | Compare transaction list vs bank statement, find the gap |
 

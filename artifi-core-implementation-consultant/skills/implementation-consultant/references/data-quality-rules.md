@@ -12,7 +12,7 @@ Validation rules to apply when importing data during migration. Run these checks
 
 ### Duplicate Detection
 - Check for duplicates within the import batch (same name, email, or reference number)
-- Check for duplicates against existing records: `search("<type>", "<name_or_reference>")`
+- Check for duplicates against existing records: `query("<type>", query="<name_or_reference>")`
 - Use `on_duplicate="skip"` for safe imports, `on_duplicate="update"` to overwrite
 
 ### Cross-Reference Integrity

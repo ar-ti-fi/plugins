@@ -91,7 +91,7 @@ These are the default codes shipped with Arfiti. Clients may rename or create th
 Always start by fetching the entity's actual tax codes:
 
 ```
-list_entities("tax_code", {"legal_entity_id": <id>, "country_code": "EE", "is_active": true})
+query("tax_code", filters={"legal_entity_id": <id>, "country_code": "EE", "is_active": true})
 ```
 
 Then classify each code using the decision tree above. Present the classification

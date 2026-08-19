@@ -14,7 +14,7 @@ Help me import data into Arfiti:
 5. Validate with a dry run first: `manage_imports(action="<type>", records=[...], validate_only=true)`
 6. Show validation results — fix any errors
 7. Run the actual import
-8. If async (>50 records), monitor progress with `get_import_status()`
+8. If async (>50 records), monitor progress with `manage_imports(action="status", import_id=...)`
 9. Show final results: imported, skipped, errors
 
 Use the Implementation Consultant skill for data quality rules and validation guidance.

@@ -8,7 +8,7 @@ description: Check the overall progress of year-end bookkeeping across all 5 pha
 Show me the current status of year-end bookkeeping for my company:
 
 1. Ask which legal entity and fiscal year
-2. **Phase 1 — Entity Setup**: Check if accounts exist (`list_entities("account")`), bank accounts created (`list_entities("bank_account")`), posting profiles configured
+2. **Phase 1 — Entity Setup**: Check if accounts exist (`query("account")`), bank accounts created (`query("bank_account")`), posting profiles configured
 3. **Phase 2 — Opening Balances**: Check if opening balance entry exists (look for OPENING_ENTRY transactions), verify trial balance at year start
 4. **Phase 3 — Bank Statements**: For each bank account and each month, check if transactions exist. Show a grid: months (Jan-Dec) vs banks, with checkmarks for months that have transactions posted
 5. **Phase 4 — Source Documents**: Check AP/AR aging for unlinked payments (payments without matching invoices/bills)

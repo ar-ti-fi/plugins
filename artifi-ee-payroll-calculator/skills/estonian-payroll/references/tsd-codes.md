@@ -5,7 +5,7 @@ Code lookups used in the e-MTA TSD XML. Each section maps the universal slug use
 For the XML structure see `tsd-format.md`. For the list of slugs registered in the ERP, query at runtime:
 
 ```python
-list_entities("payment_classification", filters={"country_code": "EE"})
+query("payment_classification", filters={"country_code": "EE"})
 ```
 
 ---

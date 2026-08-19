@@ -36,7 +36,7 @@ Before starting, confirm with the user:
 
 You MUST verify each checkpoint before proceeding. If a checkpoint fails, STOP and inform the user.
 
-- **CP1**: Legal entity has an active chart of accounts (`list_entities("account", {"legal_entity_id": <id>})` returns results)
+- **CP1**: Legal entity has an active chart of accounts (`query("account", filters={"legal_entity_id": <id>})` returns results)
 - **CP2**: Prior year data is available (for copy-forward and forecast modes)
 - **CP3**: All account numbers used in budget lines exist in `v_accounts_effective` for the entity
 - **CP4**: Budget amounts are reasonable — no single line exceeds 50% of total unless the user explicitly confirms
@@ -53,7 +53,7 @@ You MUST verify each checkpoint before proceeding. If a checkpoint fails, STOP a
 Fetch the entity's active accounts to know what to budget:
 
 ```python
-accounts = list_entities("account", {
+accounts = query("account", filters={
     "legal_entity_id": <entity_id>,
     "is_active": true
 })
@@ -66,22 +66,23 @@ Group accounts by type (revenue, expense, asset, liability) to build the budget 
 Get actual GL balances for the prior fiscal year as a baseline:
 
 ```python
-# Trial balance for prior year
+# Trial balance as of prior year-end
 actuals = generate_report("trial_balance", {
     "legal_entity_id": <entity_id>,
-    "date_from": "2025-01-01",
-    "date_to": "2025-12-31"
+    "as_of_date": "2025-12-31"
 })
 ```
 
 Or for monthly detail:
 
 ```python
-# Monthly actuals per account
-monthly = search("gl_balance", "", {
-    "legal_entity_id": <entity_id>,
-    "period_name": "2025-01"
-})
+# Monthly actuals per account (no gl_balance entity -- aggregate
+# transaction_line debits/credits for the month instead)
+monthly = query("transaction_line", filters={
+    "legal_entity_id": <entity_id>
+}, date_filters={
+    "transaction_date": {"from": "2025-01-01", "to": "2025-01-31"}
+}, group_by=["account_number"], aggregates={"debit": "sum", "credit": "sum"})
 ```
 
 **CP1 checkpoint**: Confirm accounts exist.
@@ -184,7 +185,7 @@ Inform the user:
 ### Step 1: Find Source Budget
 
 ```python
-versions = list_entities("budget_version", {
+versions = query("budget_version", filters={
     "legal_entity_id": <entity_id>,
     "fiscal_year": 2025,
     "scenario": "budget",
@@ -255,7 +256,7 @@ result = submit("budget_line", "bulk_upsert", {
 ### Step 1: Load Approved Budget
 
 ```python
-budget = list_entities("budget_version", {
+budget = query("budget_version", filters={
     "legal_entity_id": <entity_id>,
     "fiscal_year": 2026,
     "scenario": "budget",
@@ -265,7 +266,7 @@ budget = list_entities("budget_version", {
 
 Also fetch budget lines:
 ```python
-budget_lines = list_entities("budget_line", {
+budget_lines = query("budget_line", filters={
     "budget_version_id": <budget_version_id>
 })
 ```
@@ -339,7 +340,7 @@ submit("budget_line", "bulk_upsert", {
 ### Step 1: Fetch Active Employees
 
 ```python
-employees = list_entities("employee", {
+employees = query("employee", filters={
     "legal_entity_id": <entity_id>,
     "status": "active"
 })
@@ -347,7 +348,7 @@ employees = list_entities("employee", {
 
 Also fetch compensation records if available:
 ```python
-compensation = search("employee_compensation", "", {
+compensation = query("employee_compensation", filters={
     "legal_entity_id": <entity_id>
 })
 ```
@@ -408,7 +409,7 @@ submit("budget_line", "bulk_upsert", {
 ### Step 1: Fetch Active Projects
 
 ```python
-projects = list_entities("project", {
+projects = query("project", filters={
     "legal_entity_id": <entity_id>,
     "status": "active"
 })
@@ -490,7 +491,7 @@ Tell the user:
 
 ## Error Handling
 
-- **"Account XXXX not found"**: Check the chart of accounts. Use `search("account", "XXXX")` to find the correct account.
+- **"Account XXXX not found"**: Check the chart of accounts. Use `query("account", query="XXXX")` to find the correct account.
 - **"Budget version is locked/archived"**: Cannot modify. Create a new forecast version instead.
 - **"Duplicate budget line"**: A line with the same account/period/dimension combination already exists. Use `bulk_upsert` to update it.
 - **"No prior year data"**: Build from scratch with manual amounts instead of growth-based.

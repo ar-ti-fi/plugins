@@ -127,7 +127,7 @@ When a material variance is found, investigate in layers:
 ### Level 1: Account Summary
 "Which accounts have the largest variances?"
 ```python
-# Use aggregate_entities or generate_report
+# Use query() or generate_report
 generate_report("variance_summary", {
     "budget_version_id": <id>,
     "legal_entity_id": <entity_id>
@@ -142,7 +142,7 @@ Look at the variance by period — is it consistent across months or concentrate
 "Which department/project/region is driving this?"
 ```python
 # Filter variance by dimension
-search("budget_line", "", {
+query("budget_line", filters={
     "budget_version_id": <id>,
     "dimension_type_code": "DEPARTMENT"
 })
@@ -152,7 +152,7 @@ search("budget_line", "", {
 "What specific transactions caused this?"
 ```python
 # Look at actual GL transactions for the account/period
-search("transaction", "", {
+query("transaction", filters={
     "legal_entity_id": <entity_id>,
     "account_number": "6500",
     "date_from": "2026-03-01",

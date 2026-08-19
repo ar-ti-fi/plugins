@@ -26,7 +26,7 @@ Allocate proportional to each target's existing balance (e.g., by department exp
 **Example**: "Allocate rent based on each department's total expenses"
 
 **Steps**:
-1. Fetch target balances: `search("gl_balance", "", {"account_type": "EXPENSE", "dimension_1_code": "DEPT"})`
+1. Fetch target balances by department dimension: `generate_report("dimension_analysis", {"legal_entity_id": <id>, "dimension_type_name": "Department", "start_date": <period_start>, "end_date": <period_end>, "account_type": "EXPENSE"})`
 2. Calculate each department's share: `dept_balance / total_balance`
 3. Apply percentages to source amount
 
@@ -39,7 +39,7 @@ Allocate based on number of active employees per department/cost center.
 **Example**: "Allocate office rent by number of employees in each department"
 
 **Steps**:
-1. Fetch employees: `list_entities("employee", {"legal_entity_id": <id>, "status": "active"})`
+1. Fetch employees: `query("employee", filters={"legal_entity_id": <id>, "status": "active"})`
 2. Group by department dimension
 3. Calculate percentages: `dept_count / total_count`
 

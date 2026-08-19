@@ -195,6 +195,17 @@ result = submit("allocation_run", "submit_lines", {
 
 ## Validation Rules
 
+### Payload shape (all operations)
+
+0. **No unknown top-level keys.** Every `allocation_run.*` payload rejects keys
+   not listed in the tables above. A misspelled optional field used to be
+   silently dropped — misspell `source_transaction_id` and the run is created
+   standalone instead of document-linked, skipping the source-account match and
+   the per-account limit in rules 8–10 below. Send the exact field names.
+
+   Line dicts inside `lines` are *not* restricted this way — extra per-line keys
+   are still accepted, since per-line rules are enforced by the executor.
+
 ### Basic (all allocation runs)
 
 1. **Balance**: Total DR amounts must equal total CR amounts (tolerance: 0.01)

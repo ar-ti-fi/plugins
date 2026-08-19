@@ -15,7 +15,7 @@ Dimensions are additional classification axes applied to transactions beyond the
 
 ```
 # List dimension types configured for this entity
-list_entities("dimension_value", {"legal_entity_id": ID})
+query("dimension_value", filters={"legal_entity_id": ID})
 ```
 
 This returns all dimension values grouped by dimension type. Present options to the user and let them choose which dimension to analyze.

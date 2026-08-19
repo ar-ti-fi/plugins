@@ -23,7 +23,7 @@ In the standard IFRS chart-of-accounts that comes out of Arfiti onboarding:
 
 The exclusions are critical — they're the difference between EBITDA and Operating Profit. Forgetting to exclude depreciation gives Operating Profit (OP), not EBITDA.
 
-**Don't hardcode account numbers.** Different orgs and countries have different COA layouts. Filter by `account_type` and `account_subtype`. If you're unsure, dump the COA via `list_entities("account", ...)` and check the subtypes present.
+**Don't hardcode account numbers.** Different orgs and countries have different COA layouts. Filter by `account_type` and `account_subtype`. If you're unsure, dump the COA via `query("account", ...)` and check the subtypes present.
 
 ## Trailing-12-month EBITDA
 

@@ -130,7 +130,7 @@ After uploading, run these checks:
 2. **If subledger items provided:**
    - AR aging: `generate_report("ar_aging", {"legal_entity_id": ID, "as_of_date": "CUTOFF_DATE"})` — each invoice visible
    - AP aging: `generate_report("ap_aging", {"legal_entity_id": ID, "as_of_date": "CUTOFF_DATE"})` — each bill visible
-   - Fixed assets: `list_entities("fixed_asset", {"legal_entity_id": ID})` — each asset visible
+   - Fixed assets: `query("fixed_asset", filters={"legal_entity_id": ID})` — each asset visible
 
 3. **Bank balances**: Compare system bank account balance vs actual bank balance at cutoff
 

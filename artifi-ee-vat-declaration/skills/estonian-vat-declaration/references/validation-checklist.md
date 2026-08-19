@@ -38,9 +38,9 @@ prose-header CSV) and the €20.79 line-5 gross-up error.
 Find cash movements in the period with no matching invoice/bill:
 
 ```
-list_entities("transaction", {"legal_entity_id": ID, "transaction_type": "ar_payment"},
+query("transaction", filters={"legal_entity_id": ID, "transaction_type": "ar_payment"},
     date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"}})
-list_entities("transaction", {"legal_entity_id": ID, "transaction_type": "ap_payment"}, ...)
+query("transaction", filters={"legal_entity_id": ID, "transaction_type": "ap_payment"}, ...)
 # plus unmatched bank statement lines for the period
 ```
 
@@ -95,8 +95,8 @@ account or tax code.
 Sum sales per partner (excl. VAT) and purchases per partner (incl. VAT) for the period:
 
 ```
-aggregate_entities("transaction", ["party_name"], {"amount": "sum", "id": "count"},
-    {"legal_entity_id": ID, "transaction_type": "ar_invoice"}, date_filters={...})
+query("transaction", group_by=["party_name"], aggregates={"amount": "sum", "id": "count"},
+    filters={"legal_entity_id": ID, "transaction_type": "ar_invoice"}, date_filters={...})
 # and the same for ap_invoice
 ```
 

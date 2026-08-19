@@ -25,7 +25,7 @@ Analyze profitability by department, project, cost center, or any custom dimensi
 Ask for the legal entity and date range, then discover available dimensions:
 
 ```
-list_entities("dimension_value", {"legal_entity_id": ID})
+query("dimension_value", filters={"legal_entity_id": ID})
 ```
 
 Present options and let the user choose which dimension to analyze.

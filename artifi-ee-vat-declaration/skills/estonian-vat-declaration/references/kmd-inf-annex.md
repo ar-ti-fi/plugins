@@ -24,8 +24,8 @@ Report customers where total AR invoices > EUR 1,000 in the period.
 
 **Query approach:**
 ```
-aggregate_entities("transaction", ["party_name"], {"amount": "sum", "id": "count"},
-    {"legal_entity_id": ID, "transaction_type": "ar_invoice"},
+query("transaction", group_by=["party_name"], aggregates={"amount": "sum", "id": "count"},
+    filters={"legal_entity_id": ID, "transaction_type": "ar_invoice"},
     date_filters={"transaction_date": {"from": "YYYY-MM-01", "to": "YYYY-MM-DD"}})
 ```
 Then filter to partners where sum > 1000.

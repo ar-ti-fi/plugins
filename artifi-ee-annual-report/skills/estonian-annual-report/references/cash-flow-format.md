@@ -37,7 +37,7 @@ generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "YYYY-12-
 generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "YYYY-1-12-31"})
 
 # Fixed asset movements for investing activities
-list_entities("fixed_asset", {"legal_entity_id": ID})
+query("fixed_asset", filters={"legal_entity_id": ID})
 ```
 
 ## Validation

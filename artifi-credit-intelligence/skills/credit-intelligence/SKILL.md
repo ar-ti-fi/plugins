@@ -40,7 +40,7 @@ A complete `/credit-read` produces a 5-section markdown report:
 #### Step 1: Resolve the entity
 
 ```
-list_entities("legal_entity", {})
+query("legal_entity")
 ```
 
 Pick the entity by name or ID. Read `functional_currency` and `country_code` for reporting context.

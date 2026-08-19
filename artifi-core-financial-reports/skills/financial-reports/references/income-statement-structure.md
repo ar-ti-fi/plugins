@@ -85,7 +85,7 @@ Choose format based on available data:
 
 To detect:
 ```
-list_entities("account", {
+query("account", filters={
     "legal_entity_id": ID,
     "account_type": "expense",
     "account_category": "cogs"

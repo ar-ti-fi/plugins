@@ -50,9 +50,9 @@ generate_report("trial_balance", {"legal_entity_id": ID, "as_of_date": "PRIOR-12
 # Note data
 generate_report("ar_aging", {"legal_entity_id": ID, "as_of_date": "YYYY-12-31"})
 generate_report("ap_aging", {"legal_entity_id": ID, "as_of_date": "YYYY-12-31"})
-list_entities("fixed_asset", {"legal_entity_id": ID})
-list_entities("bank_account", {"legal_entity_id": ID})
-list_entities("employee", {"legal_entity_id": ID})
+query("fixed_asset", filters={"legal_entity_id": ID})
+query("bank_account", filters={"legal_entity_id": ID})
+query("employee", filters={"legal_entity_id": ID})
 ```
 
 **DO NOT skip prior year fetches.** If prior year data is unavailable (e.g., first year of operations), explicitly set all prior year values to 0 in the JSON.

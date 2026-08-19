@@ -10,7 +10,7 @@ Generate the Estonian monthly TSD declaration as e-MTA-compatible XML.
 
 **How it works:** the command fetches payroll data + universal tax-filing metadata from the ERP, builds a compact JSON payload, and runs `scripts/generate_tsd.py` — a Python generator that produces the **real e-MTA format** (root `<tsd_vorm>`, no namespace, `c{NNN}_*` element naming, mandatory `<vorm>TSD</vorm>`, BOM-prefixed UTF-8). Output is validated against the official XSD before being written.
 
-This command is the **reference implementation** of the universal country-plugin contract documented in [`docs/GUIDES/GUIDE_TAX_FILING_PLUGINS.md`](../../../../docs/GUIDES/GUIDE_TAX_FILING_PLUGINS.md). All country-specific data is read via universal MCP tools — no hard-coded country logic in the calling skill.
+This command is the **reference implementation** of the universal country-plugin contract documented in [`docs/GUIDES/GUIDE_TAX_FILING_PLUGINS.md`](../../../docs/GUIDES/GUIDE_TAX_FILING_PLUGINS.md). All country-specific data is read via universal MCP tools — no hard-coded country logic in the calling skill.
 
 ## Usage
 
@@ -31,7 +31,7 @@ Optional: `--month YYYY-MM` if the payroll run spans multiple TSD periods (rare)
 ## Step 1 — Confirm form is registered for Estonia
 
 ```python
-forms = list_entities("tax_filing_form", filters={"country_code": "EE", "form_code": "TSD"})
+forms = query("tax_filing_form", filters={"country_code": "EE", "form_code": "TSD"})
 ```
 
 Expect 1 row. If 0, the org hasn't run the EE onboarding seeders yet — escalate (run `setup_tax_filing_forms` for this org).
@@ -44,19 +44,30 @@ run = get_entity("payroll_run", id=<run_id>)
 
 # Period → year, month for c108/c109
 period = get_entity("payroll_period", id=run["payroll_period_id"])
+```
 
-# Per-employee breakdown
-details = list_entities("payroll_run_detail", filters={"payroll_run_id": <run_id>})
+`payroll_run_details` (per-employee breakdown) and `payroll_run_detail_lines`
+(tax line breakdown: income_tax, social_tax, unemployment_employee,
+unemployment_employer, pension) exist in the schema but have no registered
+`query()` entity type -- they cannot be fetched through the MCP query tool
+today. Until that gap is closed, reconstruct each employee's per-line amounts
+from `employee_compensation` + `employee_tax_settings` + the current
+`payroll_tax_jurisdiction` rates, using the same formulas the calculator
+applies (income tax 22% of taxable base, social tax 33% of gross with the
+EUR 886/month minimum base, unemployment 1.6%/0.8%, funded pension by tier --
+see `references/tsd-codes.md`), and validate the totals against
+`payroll_run`'s aggregate fields (`total_gross_pay`, `total_employee_taxes`,
+`total_employer_taxes`, `total_deductions`, `total_net_pay`).
 
-# Tax line breakdown (income_tax, social_tax, unemployment_employee, unemployment_employer, pension)
-detail_lines = list_entities("payroll_run_detail_line", filters={"payroll_run_id": <run_id>})
+```python
+details = query("employee_compensation", filters={"legal_entity_id": run["legal_entity_id"], "is_active": True})
 ```
 
 ## Step 3 — Fetch universal tax-filing metadata (no per-country branching)
 
 ```python
 # Slug → c1020/c1150/c2020/c3010 external code map
-classifications = list_entities("payment_classification", filters={"country_code": "EE"})
+classifications = query("payment_classification", filters={"country_code": "EE"})
 slug_to_code = {c["slug"]: c["external_code"] for c in classifications["results"]}
 
 # Legal entity (regKood)
@@ -82,7 +93,7 @@ basic_exemption_amount = tax_filing.get("basic_exemption_amount", 700.00)
 For each employee's active compensation:
 
 ```python
-comps = list_entities("employee_compensation", filters={"employee_id": <employee_id>, "is_active": True})
+comps = query("employee_compensation", filters={"employee_id": <employee_id>, "is_active": True})
 classification_slug = comps["results"][0].get("payment_classification_slug", "salary_wage")
 payment_type_code = slug_to_code.get(classification_slug)  # e.g. "10" for salary, "21" for board fee
 ```
@@ -120,7 +131,7 @@ Annex 5 is **CoA-driven**: scan transaction lines posting to accounts whose `met
 
 ```python
 # Find tagged accounts for the EE entity
-accounts = list_entities("account", filters={"legal_entity_id": run["legal_entity_id"]})
+accounts = query("account", filters={"legal_entity_id": run["legal_entity_id"]})
 annex5_buckets = {}  # c-code → [account_numbers]
 for a in accounts["results"]:
     cats = (a.get("metadata") or {}).get("filing_categories") or []
@@ -131,10 +142,10 @@ for a in accounts["results"]:
 # Aggregate transaction-line debits on those accounts for the period
 totals_by_code = {}  # c-code → Decimal
 for code, account_numbers in annex5_buckets.items():
-    agg = aggregate_entities(
+    agg = query(
         "transaction_line",
         group_by=["account_number"],
-        measures=["debit"],
+        aggregates={"debit": "sum"},
         filters={
             "legal_entity_id": run["legal_entity_id"],
             "account_number": {"in": account_numbers},
@@ -172,7 +183,7 @@ for detail in details["results"]:
     person_block = {
         "personal_id": <from employee_tax_settings.tax_id_number>,
         "full_name": <FIRST LAST in uppercase>,
-        "payments": [...]    # built from detail + detail_lines
+        "payments": [...]    # built from the recomputed per-employee figures (Step 2)
     }
 
     if residency == "non_resident":
@@ -193,7 +204,7 @@ The generator emits `<tsd_L1_0>` only when `resident_persons` is non-empty, and 
 Annex 7 is populated by querying `DIVIDEND_PAYMENT` transactions for the period:
 
 ```python
-divs = list_entities("transaction", filters={
+divs = query("transaction", filters={
     "legal_entity_id": run["legal_entity_id"],
     "transaction_type_code": "DIVIDEND_PAYMENT",
     "transaction_date": {"between": [period["period_start"], period["period_end"]]},
@@ -262,13 +273,13 @@ For each resident employee with payments in this period, build one entry in `per
       "payments": [
         {
           "payment_type_code": "<payment_type_code from Step 4>",
-          "gross": <payroll_run_detail.gross_pay>,
+          "gross": <employee's gross pay, recomputed per Step 2>,
           "social_tax_base": <usually = gross; differs for partial-month / minimum-base scenarios>,
-          "social_tax": <detail_line where line_type='social_tax'>,
+          "social_tax": <employee's social tax, recomputed per Step 2>,
           "combined_kp": <pension + unemployment_employee>,
           "unemployment_employee": <if non-zero>,
           "unemployment_employer": <if non-zero>,
-          "income_tax": <detail_line where line_type='income_tax'>,
+          "income_tax": <employee's income tax, recomputed per Step 2>,
           "tax_free_items": [
             {"code": "<basic_exemption_code>", "amount": <basic_exemption_amount>}
           ]
@@ -304,7 +315,7 @@ If validation fails, re-check: did `payroll_run.process_payment` post correctly?
 ## Step 7 — Persist the return
 
 ```python
-authority = list_entities("tax_authority", filters={"country_code": "EE", "code": "EMTA-PAYROLL"})
+authority = query("tax_authority", filters={"country_code": "EE", "code": "EMTA-PAYROLL"})
 
 submit("tax_return", "create", json.dumps({
     "legal_entity_id": run["legal_entity_id"],
@@ -328,6 +339,93 @@ submit("tax_return", "create", json.dumps({
 }))
 ```
 
+## Step 7b — Post the settlement bill (the payable the payment chain settles)
+
+The declaration is the moment the collectible total is known — so the filing
+itself posts one AP bill per authority vendor. From here on, everything is the
+ordinary AP chain: payment proposals pick the bill up, the batch transmits, the
+bank-statement confirmation applies the payment, `bills_collector` chases a
+real due date. Do **not** pay the authority outside this bill — entities using
+this flow have the authority vendor listed in `payroll.tax_bill_vendor_ids`,
+which removes it from payroll payment batches and makes the bank processor
+refuse unapplied payments to it.
+
+```python
+# 1. Per-entity mapping: line_type → (vendor, payable account). NEVER hardcode
+#    accounts or vendor ids — this is entity configuration.
+cfg = query("payroll_vendor_config",
+            filters={"legal_entity_id": run["legal_entity_id"], "is_active": True})
+by_line_type = {r["line_type"]: r for r in cfg["results"]}
+
+# 2. Map the declared header totals onto payable accounts.
+#    Every euro of c118_KohustKokku must land on exactly one bill line:
+components = [
+    ("income_tax",            income_tax_total),      # c110_Tm
+    ("social_tax",            social_tax_total),      # c115_Sm
+    ("unemployment_employee", unemployment_total),    # c116_Tk (employee+employer share the payable account)
+    ("pension",               pension_total),         # c117_Kp
+]
+lines_by_vendor = {}   # master_vendor_id → {account_number → amount}
+for line_type, amount in components:
+    if amount == 0:
+        continue
+    r = by_line_type[line_type]   # KeyError = config gap → STOP, fix payroll_vendor_config
+    lines_by_vendor.setdefault(r["master_vendor_id"], {})
+    acct = lines_by_vendor[r["master_vendor_id"]]
+    acct[r["payable_account_number"]] = acct.get(r["payable_account_number"], 0) + amount
+
+# 3. Anything else inside c118 (Annex 7 dividend CIT, Annex 4/5 special income
+#    tax) gets its own line on the account its accrual journal credited —
+#    e.g. the corporate income tax payable account credited by the 22/78
+#    dividend gross-up JE. Then HARD-STOP unless everything reconciles:
+assert sum(sum(a.values()) for a in lines_by_vendor.values()) == total_obligation, \
+    "bill lines must sum to c118_KohustKokku — find the unmapped component before posting"
+
+# 4. One bill per authority vendor (EE: all line types map to the single EMTA
+#    vendor → exactly one bill). Discover org-required fields FIRST — several
+#    orgs require header dimensions on postings:
+workflow(action="schema", object_type="transaction", operation="post")
+
+period_str = f"{year}-{month:02d}"
+due = <10th of the month AFTER the declared period>   # July TSD → due 10 August
+settlement_bill_ids = []
+for vendor_id, accounts in lines_by_vendor.items():
+    result = submit("transaction", "post", json.dumps({
+        "transaction_type_code": "AP_INVOICE",
+        "legal_entity_id": run["legal_entity_id"],
+        "vendor_id": vendor_id,
+        "invoice_date": "<today, the TSD generation date>",
+        "due_date": due,
+        "reference_number": f"TSD-{run['legal_entity_id']}-{period_str}",
+        "description": f"TSD settlement {period_str}",
+        "lines": [
+            {"account_number": acct, "amount": amt,
+             "description": f"TSD {period_str} — {acct}"}
+            for acct, amt in accounts.items()
+        ],
+        # plus dimensions/fields the schema call above marked required
+        "metadata": {"source": "payroll_tax_settlement",
+                     "tax_return_id": <id from Step 7>,
+                     "tsd_period": period_str},
+    }))
+    settlement_bill_ids.append(result["transaction_id"])
+
+# Idempotency: the AP_INVOICE executor rejects a duplicate (vendor +
+# reference_number) that is already posted. On a re-run, treat that rejection
+# as "already done" — look the bill up by reference and reuse its id. Never
+# post a second bill for the same period.
+
+# 5. Link return ↔ bill both ways:
+submit("tax_return", "update", json.dumps({
+    "return_id": <id from Step 7>,
+    "return_data": {**return_data, "settlement_bill_ids": settlement_bill_ids},
+}))
+```
+
+A correction TSD for an already-billed period posts a **supplemental** bill for
+the positive delta with reference `TSD-{le}-{period}-K1` (a negative delta is a
+vendor credit) — the base reference stays unique, so idempotency holds.
+
 ## Step 8 — Filing instructions to user
 
 After successful generation, show:
@@ -350,10 +448,15 @@ After successful generation, show:
    }))
    ```
 
+6. Payment: the Step 7b settlement bill is already in the AP queue — the payment
+   proposal pays it by the same 10th-of-month deadline. Do not instruct the user
+   to pay the authority manually outside that bill.
+
 ## Output
 
 - `TSD_YYYYMM_{regcode}.xml` — the e-MTA-compatible XML
 - `tax_return` row in the ERP linking the XML, JSON input, and header totals
+- AP bill(s) `TSD-{legal_entity_id}-{YYYY-MM}` to the authority vendor(s) (Step 7b) — the payable the payment chain settles; ids stored in `return_data.settlement_bill_ids`
 
 ## Validation
 
@@ -364,10 +467,14 @@ xmllint --noout --schema /path/to/tsd_schema_eng_01.01.2023.xsd /path/to/TSD_YYY
 # Output: ".../TSD_YYYYMM_REGCODE.xml validates"
 ```
 
+Also verify the settlement bill: `get_entity("transaction", <settlement_bill_id>)` —
+posted, vendor = the authority, lines sum to `c118_KohustKokku`, due the 10th of the
+following month, and `tax_return.return_data.settlement_bill_ids` points back at it.
+
 ## See also
 
 - `references/tsd-format.md` — full XSD structure and emit rules
 - `references/tsd-codes.md` — `c1020_ValiKood`, `c1150_TuliKood`, `c3010_TuliKood` lookup tables
 - `scripts/generate_tsd.py` — the generator
 - `scripts/test_tsd_round_trip.py` — golden-master test against `Downloads/TSD 2026 4.xml`
-- [`docs/GUIDES/GUIDE_TAX_FILING_PLUGINS.md`](../../../../docs/GUIDES/GUIDE_TAX_FILING_PLUGINS.md) — the universal country-plugin contract
+- [`docs/GUIDES/GUIDE_TAX_FILING_PLUGINS.md`](../../../docs/GUIDES/GUIDE_TAX_FILING_PLUGINS.md) — the universal country-plugin contract

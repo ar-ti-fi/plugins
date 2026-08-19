@@ -139,7 +139,7 @@ Do **not** hardcode tax-code names. Query the entity's codes and classify by
 properties (see `references/tax-codes-ee.md`):
 
 ```
-list_entities("tax_code", {"legal_entity_id": <id>, "country_code": "EE", "is_active": true})
+query("tax_code", filters={"legal_entity_id": <id>, "country_code": "EE", "is_active": true})
 ```
 
 For each code, in order:
