@@ -104,9 +104,10 @@ Why this exists (per the official plugin-marketplace docs): when `version` is se
 clients pin the cached plugin to that exact string — *"you must bump it every time you
 want users to receive changes; pushing new commits alone is not enough."* The docs also
 advise against setting `version` in both `plugin.json` and the marketplace entry
-(plugin.json silently wins); we deliberately keep both **because the CI check enforces
-they are identical**, which removes the masking risk while every client surface sees
-the same version. Do not remove one of them without updating the checker.
+(the marketplace entry wins when set — see code.claude.com/docs/en/plugins, version
+management); we deliberately keep both **because the CI check enforces they are
+identical**, which removes the masking risk while every client surface sees the same
+version. Do not remove one of them without updating the checker.
 
 ## License
 
