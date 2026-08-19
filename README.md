@@ -82,6 +82,23 @@ We welcome contributions for new countries. A typical compliance plugin needs:
 
 See any existing country plugin for the structure. Open an issue or PR to get started.
 
+## MCP transport config (checked in CI)
+
+Each plugin's `.mcp.json` points at the Arfiti MCP server. The `type` field must
+be a real transport — `http` (alias `streamable-http`), `sse`, `ws`, or `stdio`.
+A remote endpoint uses `"type": "http"`:
+
+```json
+{ "mcpServers": { "arfiti": { "type": "http", "url": "https://mcp.ar-ti-fi.com/mcp" } } }
+```
+
+`"type": "url"` is **not** a transport. It shipped from April to 2026-08-19 and
+cost five weeks of outage: Claude Code tolerated it, but Cowork's stricter sync
+rejected the entire marketplace with a generic "Marketplace sync failed", so no
+plugin was installable there. `claude plugin validate` does not read `.mcp.json`,
+so nothing caught it. `plugins/scripts/check_mcp_configs.py` now runs in the
+publish workflow and fails the build on an invalid transport.
+
 ## Versioning (required on every content change)
 
 Claude.ai caches installed plugins **by version** — shipping changed content under an
