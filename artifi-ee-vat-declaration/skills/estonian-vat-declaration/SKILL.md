@@ -291,6 +291,63 @@ Tell the user: "VAT closing journal entry posted. Net VAT {payable/overpaid}: EU
 
 > **Note:** Determine the correct VAT Output, Input, Payable, and Receivable account numbers by querying the entity's chart of accounts. Look for accounts with `account_subtype` matching `vat_output`, `vat_input`, or similar naming conventions.
 
+### Step 9b: Post the EMTA Settlement Bill (Line 12 > 0 only)
+
+The closing entry records the liability on the ledger, but nothing
+vendor-shaped exists yet — so when the user pays EMTA from the bank, the
+bank agent finds no bill to apply the payment to and books a dangling AP
+payment against nothing (live incident, Hala Digital 2026: four EMTA
+payments accumulated a fake EUR 298.94 "EMTA owes us" receivable on the AP
+control while VAT Payable sat unrelieved, reconciliation flagged the
+payments forever, and the bills-collector emailed phantom reminders).
+
+Post an AP bill to the tax authority for the declared amount. This moves
+the net VAT from VAT Payable onto Accounts Payable as an open, dated,
+vendor-visible obligation — exactly the model payroll taxes already use
+(TSD settlement bills):
+
+1. Resolve the tax-authority vendor: `query("vendor", query="Maksu- ja
+   Tolliamet")` (also try "EMTA"). If none exists, create one via
+   `submit("vendor", "create", …)` — name "Maksu- ja Tolliamet (EMTA)",
+   no VAT number, no payment terms.
+
+2. Post the bill:
+```
+submit("transaction", "post", {
+    "transaction_type_code": "AP_INVOICE",
+    "legal_entity_id": <entity_id>,
+    "vendor_id": <EMTA vendor id>,
+    "transaction_date": "<last day of reporting period>",
+    "due_date": "<20th of the following month>",
+    "currency": "EUR",
+    "description": "Net VAT payable — KMD <YYYY>/<MM>",
+    "reference_number": "KMD-<YYYY>-<MM>",
+    "lines": [
+        { "account_number": "<VAT Payable account>",
+          "amount": <net VAT payable, line 12>,
+          "description": "KMD <YYYY>/<MM> line 12" }
+    ]
+})
+```
+The line debits the VAT Payable account (the executor skips auto-VAT on
+tax-subtype accounts — the line IS the tax), crediting AP. VAT Payable
+returns to zero for the period; AP shows what is owed and by when.
+
+3. Tell the user: "EMTA settlement bill {number} posted: EUR {amount},
+   due {date}. Pay it from the bank as usual — the payment will apply to
+   this bill automatically."
+
+**Do NOT post a bill for the Line 13 (refund) case** — a receivable from
+EMTA is not a payable; the closing entry's VAT Receivable line already
+records it.
+
+**Why the payment then self-applies:** the reconciliation agent's vendor
+sweep exact-matches open bills to payments by vendor + amount, and
+payment-batch confirmations FIFO-apply for vendors listed in the entity's
+`payroll.tax_bill_vendor_ids` config. If the org also runs payroll through
+tax-bill settlement, add the EMTA vendor id to that config key so both
+paths cover it.
+
 ### Step 10: Generate Output
 
 Compile the final declaration package:
@@ -326,7 +383,7 @@ submit("tax_period", "lock", {
 To amend later: `submit("tax_period", "unlock", …)` → correct → re-file → re-lock.
 The Reports → Sales tax reconciliation panel flags any ledger-vs-return drift.
 
-> **Payment note:** Check your e-MTA prepayment account (ettemaksukonto) balance before paying. If payroll taxes or other obligations already created a positive balance, the actual payment may be lower than KMD Line 12. Make a bank transfer to EMTA — the bank statement reconciliation will clear the VAT Payable account.
+> **Payment note:** Check your e-MTA prepayment account (ettemaksukonto) balance before paying. If payroll taxes or other obligations already created a positive balance, the actual payment may be lower than KMD Line 12. Make a bank transfer to EMTA — it applies against the settlement bill from Step 9b (a lower actual payment applies partially; the remainder stays visibly open on the bill, which is correct).
 
 ## Output Format
 

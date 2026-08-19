@@ -120,6 +120,10 @@ On success it writes:
 - `submit("tax_return", "create", …)` with `return_data.declaration_body` (+ annexes,
   summaries). Report the `tax_return_id`.
 - Post the VAT closing journal entry (net to VAT Payable / Receivable).
+- When Line 12 > 0: post the EMTA settlement bill (SKILL step 9b) — DR VAT
+  Payable / CR AP to the tax-authority vendor, due the 20th of the following
+  month. The bank payment then applies to it automatically; without the bill
+  the payment dangles on AP with nothing to settle.
 
 ## Phase 7 — File & confirm
 
