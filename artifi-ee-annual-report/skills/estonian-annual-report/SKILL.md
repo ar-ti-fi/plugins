@@ -1,5 +1,5 @@
 ---
-name: Estonian Annual Report Preparation
+name: estonian-annual-report
 description: Prepares the majandusaasta aruanne (annual report) for Estonian Business Register filing via ariregister.rik.ee
 ---
 

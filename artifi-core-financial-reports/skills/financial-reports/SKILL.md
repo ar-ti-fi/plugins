@@ -1,5 +1,5 @@
 ---
-name: Financial Reports
+name: financial-reports
 description: Prepare and present standard financial reports — Balance Sheet, Profit & Loss, Cash Flow Statement, Trial Balance, Aging Analysis, and Dimension Analysis. Works with any chart of accounts.
 ---
 

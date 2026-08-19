@@ -1,5 +1,5 @@
 ---
-name: Cost Allocation
+name: cost-allocation
 description: Allocates costs across departments, projects, or dimensions. Supports two modes — standalone (from GL balances) and document-linked (from a specific transaction like an AP invoice). Reads data, calculates target splits using any method (fixed %, proportional, by headcount, custom formula), and submits allocation runs to the ERP with full validation.
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: Budget Planning
+name: budget-planning
 description: Builds budgets from scratch, copies forward with adjustments, forecasts from actuals, plans employee costs with burden rates, and creates project budgets. Reads GL data, employees, projects, and existing budgets to calculate amounts and submits via the ERP workflow system.
 ---
 

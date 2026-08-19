@@ -1,5 +1,5 @@
 ---
-name: Estonian Payroll Calculator
+name: estonian-payroll
 description: Calculates Estonian payroll (gross-to-net) with income tax, social tax, unemployment insurance, funded pension, and voluntary deductions. Submits results to the ERP via submit_calculation.
 ---
 

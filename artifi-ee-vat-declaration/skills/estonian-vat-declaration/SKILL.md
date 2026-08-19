@@ -1,5 +1,5 @@
 ---
-name: Estonian VAT Declaration (KMD)
+name: estonian-vat-declaration
 description: Prepares the monthly Estonian VAT return (KMD) in the official KMD2 format — pre-close validation gate, KMD2 machine CSV + XSD-validated XML with KMD INF annex, GL reconciliation, and file→lock workflow for e-MTA
 ---
 

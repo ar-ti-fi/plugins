@@ -1,6 +1,5 @@
 ---
 name: Generate TSD Declaration
-command: generate-tsd
 description: Generate the real Estonian e-MTA TSD XML (income + social tax monthly declaration) from a calculated/approved payroll run. Output is validated against the official XSD and ready for upload to https://maasikas.emta.ee.
 ---
 

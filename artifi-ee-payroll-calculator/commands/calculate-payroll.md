@@ -1,6 +1,5 @@
 ---
 name: Calculate Estonian Payroll
-command: calculate-payroll
 description: Calculate gross-to-net payroll for an Estonian legal entity and submit results to the ERP.
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: Credit Intelligence
+name: credit-intelligence
 description: Read a borrower's live general ledger and produce a credit memo with DSCR, leverage, working-capital cycle, concentration risk, early-warning signals, and citations. Designed for portfolio credit monitoring — not for one-off underwriting from PDFs. Works against any chart of accounts through dynamic discovery.
 ---
 

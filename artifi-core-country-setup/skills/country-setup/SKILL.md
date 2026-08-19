@@ -1,5 +1,5 @@
 ---
-name: Country Setup Template Generator
+name: country-setup
 description: Generates country-specific tax and payroll onboarding templates by researching a country's tax system, validating findings against official sources, and producing a structured JSON file for the Artifi ERP onboarding system.
 ---
 

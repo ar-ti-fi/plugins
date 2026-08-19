@@ -1,5 +1,5 @@
 ---
-name: Fund Servicing
+name: fund-servicing
 description: Strike NAV, accrue management and performance fees, process subscriptions and redemptions, maintain the per-investor cap table, and produce investor statements — all on an AI-native general ledger. The accounting and servicing layer behind tokenized funds, FoFs, and private-market vehicles.
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: Implementation Consultant
+name: implementation-consultant
 description: Guides customers through full ERP migration — from discovery through go-live. Handles chart of accounts, opening balances with open transactions, master data, gap period transactions, and verification. Acts as a knowledgeable implementation partner that detects what data is needed and advises on the best migration strategy.
 ---
 

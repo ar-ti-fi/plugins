@@ -1,5 +1,5 @@
 ---
-name: Estonian Year-End Bookkeeping
+name: year-end-bookkeeping
 description: Builds a full year's accounting from scratch for an Estonian company (OU/AS). Guides through chart of accounts setup, opening balances, bank statement processing, source document posting, reconciliation, and period close — preparing the entity for annual report filing.
 ---
 

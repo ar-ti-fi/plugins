@@ -1,5 +1,5 @@
 ---
-name: Payment Reconciliation
+name: reconciliation
 description: Matches payment transactions to invoices — automated via the reconciliation agent, then manual matching for complex cases (N:N splits, partial payments, rounding write-offs). Covers both AR (customer receipts to sales invoices) and AP (vendor payments to bills). Provides a complete reconciliation workflow from assessment through resolution.
 ---
 
