@@ -16,12 +16,12 @@
     "content_hash": "ae8991ef2e03e8d3a336c41606caf1d83ee4fdb55ae8b20129a7b0c6d3e7483d"
   },
   "artifi-core-implementation-consultant": {
-    "version": "1.0.3",
-    "content_hash": "fe35c5fb3c1f17d439a80e281f177c29b8129a65a592f94e0c93b292ee4c3f1e"
+    "version": "1.0.4",
+    "content_hash": "8bd1b948a235a10b15e078255124ffa06848691e88b88eafbf12f4dcadabe1f3"
   },
   "artifi-core-reconciliation": {
-    "version": "1.0.3",
-    "content_hash": "6a21fa29cab063aa408107809b027a67c4a7ca99ba9a1d4bb4c0731f2ea615a0"
+    "version": "1.1.0",
+    "content_hash": "1d8123cc90b66e821e4a432a416b2ce351c084160074b0f8c256d70b18ac8e5d"
   },
   "artifi-credit-intelligence": {
     "version": "1.0.3",
@@ -40,8 +40,8 @@
     "content_hash": "d4f501b4c12be074ece09389e836987b1e6c8f17eb52845e8b5e7262ad6aa27c"
   },
   "artifi-ee-year-end-bookkeeping": {
-    "version": "1.0.3",
-    "content_hash": "9e0fd68565a498aec63e01cbe3140a99bf81e495431cfc54f1527d58596e0136"
+    "version": "1.0.4",
+    "content_hash": "d9a1c822733151c93f4d70caddf787685a16e361e92d68bdd63d155036578b51"
   },
   "artifi-fund-servicing": {
     "version": "0.1.3",

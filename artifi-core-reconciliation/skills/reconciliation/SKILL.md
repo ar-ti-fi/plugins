@@ -3,6 +3,16 @@ name: reconciliation
 description: Matches payment transactions to invoices — automated via the reconciliation agent, then manual matching for complex cases (N:N splits, partial payments, rounding write-offs). Covers both AR (customer receipts to sales invoices) and AP (vendor payments to bills). Provides a complete reconciliation workflow from assessment through resolution.
 ---
 
+## Card purchase policy
+
+Use the backend purchase workspace and shared matching decision; do not implement a competing card matcher in conversation. Preserve provider rows and show net purchase spend. Reference conflicts and competing candidates require review. A paid/settled item can still lack documentation; attach missing source evidence to the existing bill. Evidence review, waiver and grouping use `card_purchase.manage` with current version, evidence fingerprint and reason. Never infer write-off authority from matching tolerance.
+
+Receipt follow-up belongs to the purchase obligation, with one owner and deduplicated reminder stages. Automation and delivery are report-only until the entity rollout settings are explicitly enabled. Statement coverage and opening/movement/closing balance controls must pass independently of agent match counts. August deletion/replay requires its own reviewed manifest and explicit authorization through transaction.delete; implementation permission does not authorize it.
+
+Legacy payment-pass descriptions below apply to non-card AP/AR behavior. Card rows use the shared purchase policy and cannot use nearest-date refund pairing, fuzzy amount identity or adjusting-journal workarounds.
+
+
+
 ## Trigger
 
 Activate when the user mentions: reconcile payments, match invoices, reconciliation, apply payment, cash application, payment matching, match receipts, unmatched payments, open invoices, AR reconciliation, AP reconciliation, payment to invoice, match payment to bill, reconcile AR, reconcile AP, recon status, what's unmatched, unreconciled transactions, apply receipt, settle invoice.
@@ -172,7 +182,7 @@ For each party, apply matching strategies in order (see **references/matching-st
 
 **Strategy 5: N:N complex** -- multiple payments map to multiple invoices. Find the combination where totals balance (within rounding tolerance).
 
-**Strategy 6: Rounding write-off** -- match is close but has a small difference (less than 1.00). Propose write-off.
+**Strategy 6: Rounding write-off** -- match is close but has a validated residual within the entity-configured limit. Propose write-off.
 
 For each proposed match, present as a table:
 
@@ -192,7 +202,7 @@ Explain the matching logic for each proposal. Show the math clearly.
 - Payment and invoice belong to the same party
 - Applied amounts don't exceed invoice `amount_due`
 - Applied amounts don't exceed payment available amount
-- Write-off amounts are within threshold (max 100)
+- Write-off amounts are within the configured entity limit and the operation is eligible
 
 **CP4 checkpoint**: Ask the user: "Here are the proposed matches. Shall I apply them? You can also modify individual matches or skip any."
 
@@ -210,7 +220,7 @@ result = submit("reconciliation", "match", {
     "applications": [
         {"target_transaction_id": <invoice_id>, "applied_amount": <amount>}
     ],
-    "write_off_amount": <rounding_diff>,  # optional, max 100
+    "write_off_amount": <rounding_diff>,  # optional, subject to entity configuration and workflow validation
     "notes": "Matched: <explanation>"
 })
 ```
@@ -439,7 +449,7 @@ This reverses all financial updates: invoice `amount_due` restored, payment `rec
 - **"Transaction is already fully reconciled"**: The payment was already matched. Use `get_entity("transaction", id=<id>)` to see its current status. To change the match, unmatch first, then re-match.
 - **"Invoice belongs to different vendor/customer"**: Payment and invoice must be for the same party. Check party assignments on both transactions.
 - **"Applied amount exceeds amount_due"**: The invoice doesn't have enough remaining balance. Check `amount_due` on the invoice -- it may have been partially paid already.
-- **"Write-off exceeds maximum (100)"**: For differences larger than 100, create an adjusting journal entry instead of using write-off. Post a JE (DR write-off account / CR AR or AP control account), then match normally.
+- **Write-off exceeds the configured limit**: Stop and report the unresolved residual. Do not use a journal to bypass the limit.
 - **"Agent run failed"**: Check agent logs via admin dashboard. Common causes: FX posting profile missing (agent needs this for multi-currency entities), no transactions to process.
 
 ---
@@ -450,5 +460,15 @@ This reverses all financial updates: invoice `amount_due` restored, payment `rec
 2. **Never guess amounts** -- always calculate from actual transaction data. Show the math to the user.
 3. **One confirmation per batch** -- group related matches (same party) and confirm together, don't ask for each individual match.
 4. **Partial is OK** -- if a payment only partially covers an invoice, apply what we have. The invoice stays open with reduced `amount_due` for future matching.
-5. **Write-off threshold** -- write-offs up to 0.05 can be applied without asking. 0.05-1.00 mention to user. Above 1.00 always ask. Above 100 always use JE instead.
+5. **Write-off authority** -- use the entity configuration and workflow permissions. No amount-only auto-approval or manual-journal bypass. Residual disposal is distinct from creating a match.
 6. **Order matters** -- always run the agent first (Mode 1) before doing manual matches. The agent handles the easy cases; manual work is for complex patterns.
+
+### Residual write-off contract (bank/card processing, slice 1)
+
+`reconciliation.write_off_item` disposes only of a current residual on an already-applied item in a completed run. `amount_paid` records total settlement, including an approved write-off: an invoice of 100 with 97 applied and 3 disposed becomes paid 100 / due 0. The payment is not applied again. A genuine zero `amount_due` stays zero even without a reconciliation stamp; only NULL uses the legacy face-amount fallback.
+
+The executor locks the run, item and affected transaction headers and validates current remaining value before posting. It currently accepts positive AR/AP invoice residuals in one common document/functional currency. An unapplied proposal, stale balance, credit/overpayment, cross-currency difference, or existing variance/reclass journal requires review; none is silently cleared. For a forgiven receivable the journal credits AR control; for a forgiven payable it debits AP control. Configured gain/loss accounts supply the other side.
+
+The entity's `reconciliation.write_off_limit` is mandatory; unset or exceeded means refusal. No fixed global threshold or adjusting-journal bypass applies. Missing/failed journal creation rolls back completion. Repeated/concurrent requests do not apply another disposal. Unmatch/payment unapply and run void restore the disposed residual as well as the original invoice application; the disposal is not additional payment cash. Period rules still apply to journal posting and reversal.
+
+This change does not introduce purchase grouping or replace the matching policy; those are later implementation slices. Successful financial settlement does not prove purchase identity or document adequacy.

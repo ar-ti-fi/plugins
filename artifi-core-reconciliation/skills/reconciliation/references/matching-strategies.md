@@ -1,3 +1,13 @@
+
+
+## Card purchase policy
+
+Use the backend purchase workspace and shared matching decision; do not implement a competing card matcher in conversation. Preserve provider rows and show net purchase spend. Reference conflicts and competing candidates require review. A paid/settled item can still lack documentation; attach missing source evidence to the existing bill. Evidence review, waiver and grouping use `card_purchase.manage` with current version, evidence fingerprint and reason. Never infer write-off authority from matching tolerance.
+
+Receipt follow-up belongs to the purchase obligation, with one owner and deduplicated reminder stages. Automation and delivery are report-only until the entity rollout settings are explicitly enabled. Statement coverage and opening/movement/closing balance controls must pass independently of agent match counts. August deletion/replay requires its own reviewed manifest and explicit authorization through transaction.delete; implementation permission does not authorize it.
+
+Legacy payment-pass descriptions below apply to non-card AP/AR behavior. Card rows use the shared purchase policy and cannot use nearest-date refund pairing, fuzzy amount identity or adjusting-journal workarounds.
+
 # Matching Strategies Reference
 
 Decision rules for proposing manual matches. Apply strategies in order -- each successive strategy handles more complex cases.
@@ -11,7 +21,7 @@ Decision rules for proposing manual matches. Apply strategies in order -- each s
 **Logic:**
 1. For each unmatched payment, search for an invoice from the same party where `amount_due` equals `abs(payment.amount)`
 2. If multiple invoices match, prefer the one closest in date
-3. Rounding tolerance: 0.01 (write off automatically, no user confirmation needed)
+3. Rounding comparison does not authorize disposal; validate any residual through the configured workflow
 
 **Confidence:** Very high. Apply without hesitation.
 
@@ -54,7 +64,7 @@ Decision rules for proposing manual matches. Apply strategies in order -- each s
 1. For each unmatched payment, find all open invoices for the same party
 2. Try combinations of 2, 3, or 4 invoices whose `amount_due` values sum to the payment amount (within tolerance)
 3. Start with fewest invoices first (2-invoice combos before 3-invoice combos)
-4. Tolerance: 0.05 for exact sums, up to 1.00 with write-off
+4. Tolerance: 0.05 for exact sums, a separately authorized residual under entity configuration
 5. Maximum combination size: 6 invoices (beyond that, it's likely not a real match)
 
 **Combination search approach:**
@@ -128,21 +138,11 @@ Decision rules for proposing manual matches. Apply strategies in order -- each s
 
 ---
 
-## Strategy 6: Rounding Write-Off
+## Strategy 6: Residual Write-Off
 
-**When:** A match is identified but there's a small difference (less than 1.00).
+First establish the match identity. For an already-applied item, use `reconciliation.write_off_item` only when its current residual is eligible under the backend contract and entity-configured ceiling. Never apply the original payment again. No universal 0.05/1/100 authority or manual-journal bypass exists.
 
-**Rules:**
-| Difference | Action |
-|------------|--------|
-| <= 0.05 | Write off automatically, mention in notes |
-| 0.06 -- 1.00 | Propose write-off, ask user to confirm |
-| 1.01 -- 100.00 | Propose write-off, explain clearly, require explicit confirmation |
-| > 100.00 | Do NOT write off. Recommend creating an adjusting journal entry instead |
-
-**Write-off direction:**
-- Payment > Invoice: DR Rounding Expense / CR AR or AP control
-- Payment < Invoice: DR AR or AP control / CR Rounding Income
+The initial corrected executor accepts same-currency positive AR/AP invoice residuals; FX, credit balances, stale allocations and existing variance/reclass journals require review. Forgiven AR debits loss and credits receivables; forgiven AP debits payables and credits gain. `amount_paid` includes approved disposal, while cash applications remain separately traceable. See the reconciliation guide for validation and undo behavior.
 
 ---
 

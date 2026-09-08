@@ -105,3 +105,12 @@ manage_onboarding(action="get_support", support_type="import_<type>")
 1. Use connector for what it supports (accounts, vendors, customers, transactions)
 2. Manual import for what it doesn't (employees, custom dimensions, etc.)
 3. Opening balance from connector, then manually add any missing items
+
+
+### Bank/card purchase replay controls
+
+Preserve provider event rows and their purchase membership. Replaying a charge and refund must not duplicate cash journals, create a second bill, or restart historical receipt reminders. Use the shared purchase identity decision; conflicting references, incomplete FX basis and disputed evidence require finance review. Keep original checking-account opening/closing balances and include explicitly routed card movements in balance and GL coverage checks before closing a period.
+
+A bank/card reset is a separately authorized operation. Prepare scoped source IDs, transaction deletion dependencies, allocations and reclass/variance journals, retained bills/attachments, queued work and a tested restoration procedure before requesting authorization. Use `transaction.delete` with its dependents policy and internal force voucher when permitted; never improvise cascades. Re-link retained evidence through the supported purchase workflow. The August investigation is not general permission to delete another client's data.
+
+Migration acceptance requires exact source coverage, one financial effect per booked movement, AP/subledger agreement, stable replay and one current documentation obligation per purchase. A balanced adjusting journal cannot explain missing provider movements. Keep purchase matching and reminder delivery disabled until the scoped validation and delivery cutoff are approved.

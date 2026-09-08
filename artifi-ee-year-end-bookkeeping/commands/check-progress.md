@@ -20,3 +20,8 @@ Present a clear dashboard:
 - Any issues or blockers found
 
 Use the Year-End Bookkeeping skill for reference on what each phase requires.
+
+
+## Card purchases and close controls
+
+Use backend purchase grouping and shared matching; preserve each source movement. Card source confirmation, bill settlement and receipt evidence are separate checks. A successful agent run or a zero unmatched count cannot prove source completeness. Require original opening/closing balances, explicit account interval/provenance and the routed-card movement bridge before close. Never create an adjusting journal merely to erase an unexplained source gap. Missing source evidence on a paid bill belongs on that existing bill. Historical reset/replay requires its own approved dependency manifest and the transaction.delete workflow; it is not implied by implementation or period-close work.

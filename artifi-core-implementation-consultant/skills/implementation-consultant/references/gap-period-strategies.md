@@ -132,3 +132,12 @@ After any strategy, run these checks:
 2. **Bank balance check**: System balance for each bank account should match actual bank balance
 3. **Income statement**: `generate_report("income_statement", {"legal_entity_id": ID, "start_date": "GAP_START", "end_date": "TODAY"})` — does revenue/expense make sense?
 4. **Missing transactions**: If bank balance doesn't match, there are missing or extra transactions — investigate
+
+
+### Bank/card purchase replay controls
+
+Preserve provider event rows and their purchase membership. Replaying a charge and refund must not duplicate cash journals, create a second bill, or restart historical receipt reminders. Use the shared purchase identity decision; conflicting references, incomplete FX basis and disputed evidence require finance review. Keep original checking-account opening/closing balances and include explicitly routed card movements in balance and GL coverage checks before closing a period.
+
+A bank/card reset is a separately authorized operation. Prepare scoped source IDs, transaction deletion dependencies, allocations and reclass/variance journals, retained bills/attachments, queued work and a tested restoration procedure before requesting authorization. Use `transaction.delete` with its dependents policy and internal force voucher when permitted; never improvise cascades. Re-link retained evidence through the supported purchase workflow. The August investigation is not general permission to delete another client's data.
+
+Migration acceptance requires exact source coverage, one financial effect per booked movement, AP/subledger agreement, stable replay and one current documentation obligation per purchase. A balanced adjusting journal cannot explain missing provider movements. Keep purchase matching and reminder delivery disabled until the scoped validation and delivery cutoff are approved.
