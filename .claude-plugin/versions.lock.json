@@ -1,19 +1,19 @@
 {
   "artifi-core-budget-planning": {
-    "version": "1.0.3",
-    "content_hash": "a8414a8a2fe8fac721585d3e06c100e62434d681898513ae7a649449f52f0f15"
+    "version": "1.0.4",
+    "content_hash": "fb48f923fe1350e3f863a3826758e5cb844cf44ab3341e39f223cc4d88ca4f44"
   },
   "artifi-core-cost-allocation": {
-    "version": "2.0.3",
-    "content_hash": "46d9cb6134e738463736dd6265c9b45021bb7a3615dc82d6e7ecc10184a3dc5c"
+    "version": "2.0.4",
+    "content_hash": "2e2d4be0fb34b23d3346486bd7b0f0db76c29ef2111213b351bc0b1ea3b5a9f7"
   },
   "artifi-core-country-setup": {
     "version": "1.0.2",
     "content_hash": "9c52c7adfbce0c98fb780c73638ef5c937d053494cca9c2a9c82eef818bea3d8"
   },
   "artifi-core-financial-reports": {
-    "version": "1.0.3",
-    "content_hash": "a6d40243265935e84a7c097ab208f20a3eba7cf239b22f20b465fdbef008244b"
+    "version": "1.0.4",
+    "content_hash": "ae8991ef2e03e8d3a336c41606caf1d83ee4fdb55ae8b20129a7b0c6d3e7483d"
   },
   "artifi-core-implementation-consultant": {
     "version": "1.0.3",
@@ -32,8 +32,8 @@
     "content_hash": "0f6101064fbc2939ca2b73b792f8c6b0ed301a028a1857b730f2bf1d02f5eb45"
   },
   "artifi-ee-payroll-calculator": {
-    "version": "1.1.2",
-    "content_hash": "bbadd3b3731e6bacffc92b79ea486c95b44c6c9230fa7c1837dfbfbc40d1a61f"
+    "version": "1.1.3",
+    "content_hash": "650c9c429ba3673985e92da620529b112f24a1c16efd703b3b5f56ec835b9880"
   },
   "artifi-ee-vat-declaration": {
     "version": "2.2.0",

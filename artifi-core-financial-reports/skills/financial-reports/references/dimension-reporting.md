@@ -122,3 +122,11 @@ generate_report("variance_summary", {
 | One dimension dominates revenue | Concentration risk — explore diversification |
 | Cost center costs growing faster than revenue | Investigate efficiency, headcount, vendor contracts |
 | Project over budget | Review scope, timeline, resource allocation |
+
+## Stored identity and reconciliation
+
+Use the report's stored GL-line dimension assignments. Master IDs identify the business classification; entity overrides affect labels and eligibility. Include inactive historical classifications and both original and reversing posted entries. Do not reconstruct historical assignments from current defaults or assume that a project dimension value ID is a business project ID.
+
+Keep a genuinely unassigned group in the result. If an ID cannot be resolved, report the mapping error instead of labeling it unassigned. Multiple dimension filters must retain at most one matching row per GL line/type. Reconcile direct amounts to the GL before displaying hierarchical totals; do not add rolled-up parent totals to their children again.
+
+Budget comparisons use stored budget-line dimensions, configured fiscal-period date ranges and the budget currency. A period sequence is not necessarily a calendar month. Each detailed budget line is an independent scope; overlapping scopes must not be summed as additive actuals. Do not infer allocations for a budget with omitted dimensions.

@@ -1,5 +1,7 @@
 # Allocation Submission Format Reference
 
+> **MSEO compatibility:** Existing numbered code fields remain the allocation adapter contract. Preserve every supplied split amount. Posted reports and reversal use stored line dimension master identity; never recalculate classifications from current defaults.
+
 ## Two Modes
 
 ### Mode 1: Standalone (No Source Document)

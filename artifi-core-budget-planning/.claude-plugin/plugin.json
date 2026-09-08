@@ -1,7 +1,7 @@
 {
   "name": "artifi-core-budget-planning",
   "description": "Budget planning plugin. Guides users through building annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting. Reads GL data, employee records, and project details to calculate budget amounts and submits via the ERP workflow system.",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "author": {
     "name": "Arfiti"
   }

@@ -12,7 +12,7 @@
       "name": "artifi-core-financial-reports",
       "source": "./artifi-core-financial-reports",
       "description": "Financial reporting suite: Balance Sheet, Profit & Loss, Cash Flow, Trial Balance, Aging Analysis, and Dimension Analysis. Works with any chart of accounts.",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "category": "reporting",
       "keywords": [
         "financial-reports",
@@ -26,7 +26,7 @@
       "name": "artifi-core-budget-planning",
       "source": "./artifi-core-budget-planning",
       "description": "Budget planning: annual/quarterly budgets, forecasting from actuals, employee cost budgeting with burden rates, and project budgeting.",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "category": "planning",
       "keywords": [
         "budget",
@@ -39,7 +39,7 @@
       "name": "artifi-core-cost-allocation",
       "source": "./artifi-core-cost-allocation",
       "description": "Cost allocation across departments, projects, or dimensions. Standalone mode (from GL balances) and document-linked mode (from a specific bill/invoice).",
-      "version": "2.0.3",
+      "version": "2.0.4",
       "category": "accounting",
       "keywords": [
         "cost-allocation",
@@ -66,7 +66,7 @@
       "name": "artifi-ee-payroll-calculator",
       "source": "./artifi-ee-payroll-calculator",
       "description": "Estonian payroll calculator. Income tax, social tax, unemployment insurance, funded pension, and TSD declaration generation for EMTA.",
-      "version": "1.1.2",
+      "version": "1.1.3",
       "category": "compliance",
       "keywords": [
         "estonia",

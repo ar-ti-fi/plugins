@@ -1,5 +1,7 @@
 # submit_calculation Payload Format
 
+> **MSEO compatibility:** Master employee IDs identify people; payroll/compensation keep legal-entity employment scope even where their numeric IDs equal the master. A person ID is not a dimension value ID.
+
 ## Overview
 
 After calculating payroll for all employees, submit the results to the ERP backend via the `submit` MCP tool. The backend validates the calculations and stores them in the payroll run.

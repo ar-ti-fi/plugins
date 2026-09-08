@@ -1,5 +1,7 @@
 # Budget Submission Format Reference
 
+> **MSEO compatibility:** Budget dimension IDs already identify masters. Preserve supplied amounts and classification IDs, including during version copy. Detailed variance uses stored classification scope and actual fiscal-period boundaries; overlapping scopes are not additive. project_id/customer_id/vendor_id retain their endpoint meanings and legal-entity scope; do not pass dimension value IDs in those fields.
+
 ## Create Budget Version
 
 ```python

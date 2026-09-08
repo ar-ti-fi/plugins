@@ -118,3 +118,5 @@ Read and present the generated markdown report.
 - **Marketing**: Negative contribution (-7,000.00). Review pricing or cost structure.
 - **Unallocated**: 12,500.00 untagged. Assign department tags for accuracy.
 ```
+
+Use the identity and reconciliation rules in `skills/financial-reports/references/dimension-reporting.md`. Preserve unassigned groups and surface unresolved mappings. Show the currency and period basis of any budget comparison.

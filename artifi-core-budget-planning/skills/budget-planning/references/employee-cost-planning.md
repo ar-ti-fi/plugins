@@ -102,12 +102,12 @@ employees = query("employee", filters={
 
 ### Planned Hires (TBH Pattern)
 
-For positions not yet filled, use placeholder identifiers:
+For positions not yet filled, keep the planning placeholder in the memo. It is not a person ID or a dimension value. Use only existing, eligible type/value codes in submitted dimensions:
 
 ```python
 {"account_number": "6000", "period_sequence": 4, "amount": 3800.00,
- "dimensions": {"employee_id": "TBH-001", "department": "ENG", "cost_center": "ENG-001"},
- "memo": "Q2 New Hire - Senior Engineer (planned start April)"}
+ "dimensions": {"department": "ENG", "cost_center": "ENG-001"},
+ "memo": "TBH-001: Q2 New Hire - Senior Engineer (planned start April)"}
 ```
 
 **Pro-rating**: If a hire starts mid-month, budget only the partial amount:
@@ -115,7 +115,7 @@ For positions not yet filled, use placeholder identifiers:
 April hire, starts April 15: budget 50% of monthly cost for April, 100% from May onward
 ```
 
-**When hired**: Update the budget line dimension from `TBH-001` to the actual employee ID.
+**When hired**: Update the planning memo. Add an employee classification only if the organisation has an eligible dimension value for that person; a payroll employment ID cannot be substituted for a dimension value code.
 
 ### Terminations
 
