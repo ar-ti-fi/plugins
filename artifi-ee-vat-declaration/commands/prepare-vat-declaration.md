@@ -147,3 +147,5 @@ On success it writes:
 - `KMD_YYYYMM_{REGCODE}.csv` (primary) + `vatDeclaration_YYYYMM_{REGCODE}.xml` (secondary).
 - A hand-off to `/prepare-ec-sales-list` when IC supplies exist (Form VD is filed separately).
 - Tax return record + VAT closing journal entry, with the `tax_return_id`.
+
+- When Line 13 > 0: complete SKILL Step 9c, preserve the saved return data, track the refund open item, and report cumulative unclaimed refunds until verified receipt or offset.

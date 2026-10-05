@@ -116,3 +116,21 @@ When presenting comparisons:
 | Operating expenses |   (800,000.00)| (750,000.00)| (50,000)| +6.7% |
 | Net profit         |    280,000.00 |   175,000.00| 105,000 | +60.0%|
 ```
+
+
+## Shared report contract (migration 630)
+
+Use the complete `report_v1` selection and its explicit sections. Keep expense credits
+negative in cost sections. `other_income` is below operating profit; do not fold it
+into revenue or operating profit. Map `finance_costs` to formatter `financial_expenses`
+and pass income-positive/cost-positive `display_amount`. Never replace null with zero,
+format a truncated selection as a full statement, or invent a currency. Formatters
+reject missing currency and unknown amounts. Their legacy Markdown number display
+uses two decimal places; use the exact envelope for currency-precision-sensitive exports.
+
+
+Formatter input: `other_income` retains its historical EE meaning of other operating
+income by default. For the shared SQL `other_income` (non-operating) section, pass
+`other_income_section: "non_operating"`. Operating gains in SQL are classified within
+`revenue` by default. Never move an operating gain below operating profit solely
+because the formatter's input field is called other income.

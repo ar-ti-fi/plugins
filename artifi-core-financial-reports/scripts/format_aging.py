@@ -14,11 +14,12 @@ import json
 import sys
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
+from report_evidence import incomplete_report
 
 
 def d(val) -> Decimal:
     if val is None:
-        return Decimal("0.00")
+        raise ValueError("REPORT_INCOMPLETE: missing amount")
     return Decimal(str(val)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
@@ -49,7 +50,10 @@ def validate(data: dict) -> list:
 
 def build_report(data: dict, aging_type: str) -> str:
     is_ar = aging_type == "ar"
-    currency = data.get("currency", "USD")
+    currency = data.get("currency")
+    if not currency: raise ValueError("REPORT_CURRENCY_MISSING")
+    partial = incomplete_report(data)
+    if partial is not None: return partial
     party_label = "Customer" if is_ar else "Vendor"
     title = "Aged Receivables" if is_ar else "Aged Payables"
     annual_revenue = d(data.get("annual_revenue", 0))
@@ -282,7 +286,8 @@ def main():
     title = "AR Aging" if args.type == "ar" else "AP Aging"
     print(f"{title} written to {args.output}")
     print(f"Entity: {data['entity_name']} | Date: {data['as_of_date']}")
-    print(f"Parties: {len(data.get('parties', []))} | Total: {fmt(sum(d(p.get('current', 0)) + d(p.get('days_1_30', 0)) + d(p.get('days_31_60', 0)) + d(p.get('days_61_90', 0)) + d(p.get('days_90_plus', 0)) for p in data.get('parties', [])))}")
+    if incomplete_report(data) is None:
+        print(f"Parties: {len(data.get('parties', []))} | Total: {fmt(sum(d(p.get('current', 0)) + d(p.get('days_1_30', 0)) + d(p.get('days_31_60', 0)) + d(p.get('days_61_90', 0)) + d(p.get('days_90_plus', 0)) for p in data.get('parties', [])))}")
 
 
 if __name__ == "__main__":

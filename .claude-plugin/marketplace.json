@@ -12,7 +12,7 @@
       "name": "artifi-core-financial-reports",
       "source": "./artifi-core-financial-reports",
       "description": "Financial reporting suite: Balance Sheet, Profit & Loss, Cash Flow, Trial Balance, Aging Analysis, and Dimension Analysis. Works with any chart of accounts.",
-      "version": "1.0.4",
+      "version": "1.0.6",
       "category": "reporting",
       "keywords": [
         "financial-reports",
@@ -80,7 +80,7 @@
       "name": "artifi-ee-vat-declaration",
       "source": "./artifi-ee-vat-declaration",
       "description": "Estonian VAT return (KMD) in the official KMD2 format: pre-close validation gate, KMD2 machine CSV + XSD-validated XML with KMD INF annex, file→lock workflow, and EC Sales List (Form VD) preparation.",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "category": "compliance",
       "keywords": [
         "estonia",

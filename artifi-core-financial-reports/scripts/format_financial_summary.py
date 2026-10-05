@@ -13,11 +13,12 @@ import json
 import sys
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
+from report_evidence import incomplete_report
 
 
 def d(val) -> Decimal:
     if val is None:
-        return Decimal("0.00")
+        raise ValueError("REPORT_INCOMPLETE: missing amount")
     return Decimal(str(val)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
@@ -60,7 +61,10 @@ def validate(data: dict) -> list:
 
 
 def build_report(data: dict) -> str:
-    currency = data.get("currency", "USD")
+    currency = data.get("currency")
+    if not currency: raise ValueError("REPORT_CURRENCY_MISSING")
+    partial = incomplete_report(data)
+    if partial is not None: return partial
     has_prior = "prior" in data
 
     pnl = data["pnl"]

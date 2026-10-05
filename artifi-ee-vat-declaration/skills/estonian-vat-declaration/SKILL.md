@@ -348,6 +348,44 @@ payment-batch confirmations FIFO-apply for vendors listed in the entity's
 tax-bill settlement, add the EMTA vendor id to that config key so both
 paths cover it.
 
+### Step 9c: Track Refunds (Line 13 > 0)
+
+Complete Step 9 also in a refund month. Verify that the closing journal moves
+net overpaid VAT to the entity's VAT Recoverable account (2310 where configured),
+not a debit left on VAT Payable. Resolve accounts from the chart; do not assume
+these account numbers apply to every entity. Do not create an AP settlement bill.
+Before posting, check for the period's existing closing journal to avoid duplicates.
+
+Read the saved tax return and preserve its complete `return_data`. Add or update
+`return_data.open_item` using `submit("tax_return", "update", ...)` (the field is
+inside the JSON return payload, not a separate ERP object):
+
+```json
+{
+  "kind": "vat_refund",
+  "currency": "EUR",
+  "amount": "<line 13>",
+  "remaining_amount": "<unclaimed balance>",
+  "status": "unclaimed",
+  "description": "Refund EUR X claimable from ettemaksukonto, not yet requested",
+  "closing_transaction_id": "<verified closing journal id>",
+  "settlements": []
+}
+```
+
+Report the cumulative `remaining_amount` across this entity's non-superseded
+refund returns, including earlier periods. Read all pages; do not total just the
+current month. Reconcile this amount to the e-MTA prepayment statement and the GL,
+listing differences explicitly. Never infer an e-MTA balance from the GL alone.
+A filed refund return does not prove that a refund was requested or received.
+Prompt the user to request a refund or confirm the intended offset.
+
+Record a request as `requested`, preserving the receivable. Reduce the remaining
+amount only after a verified bank receipt or tax-authority offset, recording its
+reference, date and amount in `settlements`. Partial settlements leave the item
+open; zero remaining changes its status to `settled`. Each settlement reference
+must be recorded once. Carry the item into subsequent close reviews until settled.
+
 ### Step 10: Generate Output
 
 Compile the final declaration package:

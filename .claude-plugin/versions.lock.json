@@ -12,8 +12,8 @@
     "content_hash": "9c52c7adfbce0c98fb780c73638ef5c937d053494cca9c2a9c82eef818bea3d8"
   },
   "artifi-core-financial-reports": {
-    "version": "1.0.4",
-    "content_hash": "ae8991ef2e03e8d3a336c41606caf1d83ee4fdb55ae8b20129a7b0c6d3e7483d"
+    "version": "1.0.6",
+    "content_hash": "5b97b0559f00ca8b0cbf2747dcc7828cad6164d0a373b4d3e780896bac2fcb67"
   },
   "artifi-core-implementation-consultant": {
     "version": "1.0.4",
@@ -36,8 +36,8 @@
     "content_hash": "650c9c429ba3673985e92da620529b112f24a1c16efd703b3b5f56ec835b9880"
   },
   "artifi-ee-vat-declaration": {
-    "version": "2.2.0",
-    "content_hash": "d4f501b4c12be074ece09389e836987b1e6c8f17eb52845e8b5e7262ad6aa27c"
+    "version": "2.2.1",
+    "content_hash": "31c09ada5a949f2c3e3102c65443945f921400ffc7ce3410e7e027099ab12f15"
   },
   "artifi-ee-year-end-bookkeeping": {
     "version": "1.0.4",

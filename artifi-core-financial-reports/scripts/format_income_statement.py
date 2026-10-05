@@ -13,11 +13,12 @@ import json
 import sys
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
+from report_evidence import incomplete_report
 
 
 def d(val) -> Decimal:
     if val is None:
-        return Decimal("0.00")
+        raise ValueError("REPORT_INCOMPLETE: missing amount")
     return Decimal(str(val)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
@@ -66,7 +67,10 @@ def sum_section(items: list) -> Decimal:
 
 
 def build_report(data: dict) -> str:
-    currency = data.get("currency", "USD")
+    currency = data.get("currency")
+    if not currency: raise ValueError("REPORT_CURRENCY_MISSING")
+    partial = incomplete_report(data)
+    if partial is not None: return partial
     has_prior = "prior" in data
     fmt_type = data.get("format", "nature")  # "nature" or "function"
 
@@ -81,6 +85,11 @@ def build_report(data: dict) -> str:
     # Calculate current period
     revenue_items = data.get("revenue", [])
     other_income_items = data.get("other_income", [])
+    # Existing EE input names mean other operating income. The shared statement's
+    # non-operating section must be explicitly mapped by the caller.
+    other_operating = data.get("other_income_section", "operating") == "operating"
+    if data.get("other_income_section", "operating") not in ("operating", "non_operating"):
+        raise ValueError("Choose operating or non_operating for other income")
     cogs_items = data.get("cogs", [])
     expense_items = data.get("expenses", [])
     financial_income_items = data.get("financial_income", [])
@@ -97,8 +106,8 @@ def build_report(data: dict) -> str:
 
     gross_profit = total_revenue - total_cogs
     total_income = total_revenue + total_other_income
-    operating_profit = total_income - total_cogs - total_expenses
-    profit_before_tax = operating_profit + total_fin_income - total_fin_expense
+    operating_profit = gross_profit - total_expenses + (total_other_income if other_operating else 0)
+    profit_before_tax = operating_profit + (0 if other_operating else total_other_income) + total_fin_income - total_fin_expense
     net_profit = profit_before_tax - total_tax
 
     # --- MAIN STATEMENT ---
@@ -113,8 +122,8 @@ def build_report(data: dict) -> str:
         p_tax = sum_section(prior.get("income_tax", []))
         p_gross = p_revenue - p_cogs
         p_total_income = p_revenue + p_other_income
-        p_operating = p_total_income - p_cogs - p_expenses
-        p_pbt = p_operating + p_fin_income - p_fin_expense
+        p_operating = p_gross - p_expenses + (p_other_income if other_operating else 0)
+        p_pbt = p_operating + (0 if other_operating else p_other_income) + p_fin_income - p_fin_expense
         p_net = p_pbt - p_tax
 
         out.append("| | Current | Prior | Change | % |")
@@ -133,9 +142,6 @@ def build_report(data: dict) -> str:
         out.append(row("Total Revenue", total_revenue, p_revenue, bold=True))
         out.append("| | | | | |")
 
-        if other_income_items:
-            out.append(row("Other income", total_other_income, p_other_income))
-
         if cogs_items:
             for item in cogs_items:
                 out.append(row(item["name"], d(item["amount"]), d(_find_prior(prior.get("cogs", []), item["name"]))))
@@ -144,8 +150,13 @@ def build_report(data: dict) -> str:
 
         for item in expense_items:
             out.append(row(item["name"], d(item["amount"]), d(_find_prior(prior.get("expenses", []), item["name"]))))
+        if other_income_items and other_operating:
+            out.append(row("Other operating income", total_other_income, p_other_income))
         out.append(row("Operating Profit", operating_profit, p_operating, bold=True))
         out.append("| | | | | |")
+
+        if other_income_items and not other_operating:
+            out.append(row("Other income", total_other_income, p_other_income))
 
         if financial_income_items or financial_expense_items:
             out.append(row("Financial income", total_fin_income, p_fin_income))
@@ -166,27 +177,29 @@ def build_report(data: dict) -> str:
         out.append(f"| **Total Revenue** | **{fmt(total_revenue)}** | **100.0%** |")
         out.append("| | | |")
 
-        if other_income_items:
-            out.append(f"| Other income | {fmt(total_other_income)} | {margin(total_other_income, total_revenue)} |")
-
         if cogs_items:
             for item in cogs_items:
-                out.append(f"| {item['name']} | ({fmt(abs(d(item['amount'])))}) | {margin(d(item['amount']), total_revenue)} |")
+                out.append(f"| {item['name']} | {fmt(-d(item['amount']))} | {margin(d(item['amount']), total_revenue)} |")
             out.append(f"| **Gross Profit** | **{fmt(gross_profit)}** | **{margin(gross_profit, total_revenue)}** |")
             out.append("| | | |")
 
         for item in expense_items:
-            out.append(f"| {item['name']} | ({fmt(abs(d(item['amount'])))}) | {margin(d(item['amount']), total_revenue)} |")
+            out.append(f"| {item['name']} | {fmt(-d(item['amount']))} | {margin(d(item['amount']), total_revenue)} |")
+        if other_income_items and other_operating:
+            out.append(f"| Other operating income | {fmt(total_other_income)} | {margin(total_other_income, total_revenue)} |")
         out.append(f"| **Operating Profit** | **{fmt(operating_profit)}** | **{margin(operating_profit, total_revenue)}** |")
         out.append("| | | |")
 
+        if other_income_items and not other_operating:
+            out.append(f"| Other income | {fmt(total_other_income)} | {margin(total_other_income, total_revenue)} |")
+
         if financial_income_items or financial_expense_items:
             out.append(f"| Financial income | {fmt(total_fin_income)} | |")
-            out.append(f"| Financial expenses | ({fmt(abs(total_fin_expense))}) | |")
+            out.append(f"| Financial expenses | {fmt(-total_fin_expense)} | |")
         out.append(f"| **Profit Before Tax** | **{fmt(profit_before_tax)}** | **{margin(profit_before_tax, total_revenue)}** |")
 
         if tax_items:
-            out.append(f"| Income tax | ({fmt(abs(total_tax))}) | |")
+            out.append(f"| Income tax | {fmt(-total_tax)} | |")
         out.append(f"| **Net Profit / (Loss)** | **{fmt(net_profit)}** | **{margin(net_profit, total_revenue)}** |")
 
     out.append("")
@@ -206,7 +219,7 @@ def build_report(data: dict) -> str:
     for item in expense_items:
         name_lower = item.get("name", "").lower()
         if "depreci" in name_lower or "amortiz" in name_lower:
-            depreciation += abs(d(item.get("amount", 0)))
+            depreciation += d(item.get("amount", 0))
     ebitda = operating_profit + depreciation
     out.append(f"| EBITDA | {fmt(ebitda)} ({margin(ebitda, total_revenue)}) |")
     out.append("")
@@ -251,7 +264,8 @@ def main():
 
     print(f"Income Statement written to {args.output}")
     print(f"Entity: {data['entity_name']} | Period: {data['start_date']} to {data['end_date']}")
-    print(f"Net Profit: {fmt(sum_section(data.get('revenue', [])) - sum_section(data.get('cogs', [])) - sum_section(data.get('expenses', [])) + sum_section(data.get('financial_income', [])) - sum_section(data.get('financial_expenses', [])) - sum_section(data.get('income_tax', [])))}")
+    if incomplete_report(data) is None:
+        print(f"Net Profit: {fmt(sum_section(data.get('revenue', [])) + sum_section(data.get('other_income', [])) - sum_section(data.get('cogs', [])) - sum_section(data.get('expenses', [])) + sum_section(data.get('financial_income', [])) - sum_section(data.get('financial_expenses', [])) - sum_section(data.get('income_tax', [])))}")
 
 
 if __name__ == "__main__":
