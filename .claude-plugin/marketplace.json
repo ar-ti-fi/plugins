@@ -94,7 +94,7 @@
       "name": "artifi-ee-year-end-bookkeeping",
       "source": "./artifi-ee-year-end-bookkeeping",
       "description": "Full year-end bookkeeping for Estonian companies. Chart of accounts setup, opening balances, bank statement processing, reconciliation, and period close.",
-      "version": "1.0.4",
+      "version": "1.0.6",
       "category": "compliance",
       "keywords": [
         "estonia",
@@ -138,7 +138,7 @@
       "name": "artifi-core-country-setup",
       "source": "./artifi-core-country-setup",
       "description": "Generates country-specific tax and payroll configuration templates. Researches VAT/GST rates, tax authorities, withholding taxes, and payroll rules to produce a structured JSON template for onboarding.",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "category": "configuration",
       "keywords": [
         "onboarding",

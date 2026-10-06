@@ -8,8 +8,8 @@
     "content_hash": "2e2d4be0fb34b23d3346486bd7b0f0db76c29ef2111213b351bc0b1ea3b5a9f7"
   },
   "artifi-core-country-setup": {
-    "version": "1.0.2",
-    "content_hash": "9c52c7adfbce0c98fb780c73638ef5c937d053494cca9c2a9c82eef818bea3d8"
+    "version": "1.0.3",
+    "content_hash": "eefd5e5e0e80d88d701ad5ce54ed613a1a77cf02a5e9b5317c84e189e69784f7"
   },
   "artifi-core-financial-reports": {
     "version": "1.0.6",
@@ -40,8 +40,8 @@
     "content_hash": "31c09ada5a949f2c3e3102c65443945f921400ffc7ce3410e7e027099ab12f15"
   },
   "artifi-ee-year-end-bookkeeping": {
-    "version": "1.0.4",
-    "content_hash": "d9a1c822733151c93f4d70caddf787685a16e361e92d68bdd63d155036578b51"
+    "version": "1.0.6",
+    "content_hash": "1b8f8d81cda96618ff91559bf52f10696ba8faa9befb0f50d0dac1aa6896e0f0"
   },
   "artifi-fund-servicing": {
     "version": "0.1.3",

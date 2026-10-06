@@ -105,7 +105,7 @@ For each entity employers must pay:
   "account_number": "2420",
   "account_name": "Social Insurance Payable",
   "account_type": "liability",
-  "account_subtype": "current_liability",
+  "account_subtype": "payroll_withholding",
   "normal_balance": "credit"
 }
 ```

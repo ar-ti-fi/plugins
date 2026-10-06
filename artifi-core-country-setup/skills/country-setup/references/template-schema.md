@@ -136,8 +136,8 @@ Additional GL accounts needed for payroll that may not exist in the standard COA
 |-------|------|----------|-------------|
 | `account_number` | string | Yes | Account number (e.g., "2420") |
 | `account_name` | string | Yes | Display name |
-| `account_type` | string | Yes | "liability" or "expense" |
-| `account_subtype` | string | Yes | "current_liability" or "operating_expense" |
+| `account_type` | string | Yes | "liability" or "expense" (any canonical type) |
+| `account_subtype` | string | Yes | Canonical subtype of the type, e.g. "payroll_withholding" (liabilities owed to tax/social authorities), "accrued_payroll" (net pay, vacation), "salaries_expense" / "employee_benefits_expense" (employer costs) — see docs/GUIDES/GUIDE_COA.md §3 |
 | `normal_balance` | string | Yes | "credit" for liabilities, "debit" for expenses |
 
 ---

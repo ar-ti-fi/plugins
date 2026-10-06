@@ -2,40 +2,32 @@
 
 This reference helps set up a chart of accounts for Estonian companies, whether importing from a prior system or starting fresh.
 
-## Standard Estonian Account Number Ranges
+## The Merit Aktiva default chart (what Artifi imports)
 
-Estonian companies typically use this numbering convention (based on the Estonian Accounting Standards / RTJ):
+Merit's default Estonian chart (RTJ-based) is classified account by account in Artifi's
+`mcp-server/src/data/templates/ee_standard_subtypes.json`. Its structure:
 
-| Range | Account Type | Category | Examples |
-|-------|-------------|----------|----------|
-| 1000-1099 | Asset | Cash & Bank | Kassas (cash), LHV arvelduskonto, Swedbank |
-| 1100-1199 | Asset | Short-term receivables | Ostjate noudeid (AR), Ettemaksed tarnijatele |
-| 1200-1299 | Asset | Inventories | Kaubad, Tooraine, Valmistoodang |
-| 1300-1399 | Asset | Other current assets | Viitlaekumised, Ettemakstud kulud |
-| 1500-1599 | Asset | Fixed assets (PP&E) | Arvutid, Mööbel, Autod, Hooned |
-| 1600-1699 | Asset | Accumulated depreciation | Akumuleeritud kulum (negative) |
-| 1700-1799 | Asset | Intangible assets | Tarkvara, Litsentsid, Firmavaartus |
-| 1800-1899 | Asset | Financial investments | Aktsiad, Osalused, Laenud antud |
-| 2000-2099 | Liability | Short-term payables | Hankijate volad (AP), Maksud |
-| 2100-2199 | Liability | Tax liabilities | Kaibemaks, Tulumaks, Sotsiaalmaks |
-| 2200-2299 | Liability | Employee liabilities | Palgavolad, Puhkusereserv |
-| 2300-2399 | Liability | Other current liabilities | Ettemaksed klientidelt, Viitlaekumised |
-| 2500-2599 | Liability | Long-term loans | Pangalaenud, Liisingukohustused |
-| 2600-2699 | Liability | Other long-term liabilities | Pikaajaline volgnevus |
-| 3000-3099 | Equity | Share capital | Osakapital, Aktsiakapital |
-| 3100-3199 | Equity | Reserves | Kohustuslik reservkapital |
-| 3200-3299 | Equity | Retained earnings | Eelmiste perioodide jaotamata kasum |
-| 3300-3399 | Equity | Current year result | Aruandeaasta kasum/kahjum |
-| 4000-4099 | Revenue | Sales revenue | Müügitulu, Teenuse tulu |
-| 4100-4199 | Revenue | Other revenue | Muu aritulu, Toetused |
-| 5000-5099 | Expense | Cost of goods sold | Kaubad, Materjalid, Alltöövõtt |
-| 5100-5199 | Expense | Personnel expenses | Palgakulu, Sotsiaalmaks, Tööjõumaksud |
-| 5200-5299 | Expense | Depreciation | Põhivara kulum |
-| 5300-5399 | Expense | Other operating expenses | Rent, Kommunaalid, Transport |
-| 6000-6099 | Expense | Administrative expenses | Kontor, IT, Raamatupidamine |
-| 6100-6199 | Expense | Marketing expenses | Reklaam, Turundus |
-| 7000-7099 | Revenue/Expense | Financial income/expense | Intressitulu, Intressikulu |
-| 8000-8099 | Expense | Income tax | Tulumaks dividendidelt |
+| Range | Account type | Contents (examples) |
+|-------|--------------|---------------------|
+| 1000-1099 | asset | Cash and bank (arvelduskonto), term deposits, cash in transit |
+| 1200-1299 | asset | Trade receivables, doubtful receivables (contra), loans issued, prepayments |
+| 1300-1399 | asset | Inventories, prepayments to suppliers |
+| 1800-1899 | asset | Tangible fixed assets and their accumulated depreciation (odd numbers) |
+| 1900-1999 | asset | Goodwill, development costs, software, licences and their accumulated amortisation |
+| 2000-2099 | liability | Bank loans, overdraft, owner loans, current portion of loans and finance leases |
+| 2100-2199 | liability | Trade payables |
+| 2200-2299 | liability | Payroll withholdings, vacation pay liability |
+| 2300-2499 | liability | VAT (output and input, net), payroll taxes, income tax, interest payable |
+| 2800-2899 | liability | Long-term liabilities, provisions, target financing |
+| 2900-2999 | equity | Share capital, share premium, own shares, reserves, retained earnings, profit for the year |
+| 3000-3499 | revenue | Sales revenue |
+| 3500-3599 | revenue | Other operating income: disposal of fixed assets, realised FX gain, grants |
+| 4000-4099 | cogs | Materials, goods and services bought for resale, subcontracting |
+| 4100-4699 | expense | Rent, utilities, IT, bank charges, bad debts, vehicles, travel, fringe benefits |
+| 4700-4799 | expense | Personnel: salaries, social tax, vacation accrual |
+| 4800-4899 | expense | Depreciation and amortisation |
+| 4900-4999 | expense | Other operating expenses: loss on disposal, tax interest, realised FX loss |
+| 6000-6099 | expense | Financial expenses (interest) |
 
 ## Importing from Common Estonian Systems
 
@@ -46,14 +38,7 @@ Merit Aktiva is the most common Estonian accounting software. Their CoA export t
 - Account name (in Estonian)
 - Account type (Varad, Kohustused, Omakapital, Tulud, Kulud)
 
-**Mapping Merit types to Arfiti:**
-| Merit Type | Arfiti account_type | Arfiti normal_balance |
-|---|---|---|
-| Varad (Assets) | asset | debit |
-| Kohustused (Liabilities) | liability | credit |
-| Omakapital (Equity) | equity | credit |
-| Tulud (Revenue) | revenue | credit |
-| Kulud (Expenses) | expense | debit |
+The Merit connector classifies each account by number from that table (account_type, account_subtype and normal_balance), so no manual mapping is needed; an account outside the table falls back to its number range.
 
 ### e-Financials
 
@@ -109,12 +94,12 @@ When importing a CoA without explicit types, determine the type from the account
 
 ```
 1xxx → asset
-2xxx → liability
-3xxx → equity
-4xxx → revenue
-5xxx-6xxx → expense
-7xxx → revenue (if interest income) or expense (if interest expense)
-8xxx → expense (tax)
+20xx–28xx → liability
+29xx → equity
+3xxx → revenue
+40xx → cogs
+41xx–49xx → expense
+60xx → expense (financial)
 ```
 
 ## Import Format
@@ -126,6 +111,7 @@ When using `manage_imports(action="accounts")`, each record needs:
   "account_number": "1000",
   "account_name": "LHV arvelduskonto",
   "account_type": "asset",
+  "account_subtype": "bank",
   "normal_balance": "debit",
   "is_active": true
 }
@@ -133,7 +119,14 @@ When using `manage_imports(action="accounts")`, each record needs:
 
 The `normal_balance` follows from `account_type`:
 - asset → debit
+- cogs → debit
 - expense → debit
 - liability → credit
 - equity → credit
 - revenue → credit
+
+Contra accounts take the opposite side, as the Merit default chart table states per account: accumulated
+depreciation and amortisation (18xx/19xx contra rows) and the doubtful-receivables allowance (1208) are
+credit-normal assets, own shares (2940, 2942) and unpaid share capital (2962) are debit-normal equity, and the disposed
+assets' carrying amount and disposal loss (3512, 3514) are debit-normal revenue. Send the table's `normal_balance`
+for those rows rather than the type's.

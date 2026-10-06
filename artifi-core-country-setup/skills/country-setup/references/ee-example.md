@@ -222,10 +222,10 @@ Estonia uses EU VAT. Note: we include historical rates because companies may nee
 
 ```json
   "payroll_gl_accounts": [
-    {"account_number": "2420", "account_name": "Social Tax Payable", "account_type": "liability", "account_subtype": "current_liability", "normal_balance": "credit"},
-    {"account_number": "2430", "account_name": "Pension Contributions Payable", "account_type": "liability", "account_subtype": "current_liability", "normal_balance": "credit"},
-    {"account_number": "2440", "account_name": "Unemployment Insurance Payable", "account_type": "liability", "account_subtype": "current_liability", "normal_balance": "credit"},
-    {"account_number": "6100", "account_name": "Social Security Costs", "account_type": "expense", "account_subtype": "operating_expense", "normal_balance": "debit"}
+    {"account_number": "2420", "account_name": "Social Tax Payable", "account_type": "liability", "account_subtype": "payroll_withholding", "normal_balance": "credit"},
+    {"account_number": "2430", "account_name": "Pension Contributions Payable", "account_type": "liability", "account_subtype": "payroll_withholding", "normal_balance": "credit"},
+    {"account_number": "2440", "account_name": "Unemployment Insurance Payable", "account_type": "liability", "account_subtype": "payroll_withholding", "normal_balance": "credit"},
+    {"account_number": "6100", "account_name": "Social Security Costs", "account_type": "expense", "account_subtype": "salaries_expense", "normal_balance": "debit"}
   ],
 ```
 
