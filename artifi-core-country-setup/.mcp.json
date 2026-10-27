@@ -2,7 +2,7 @@
   "mcpServers": {
     "arfiti": {
       "type": "http",
-      "url": "https://mcp.ar-ti-fi.com/mcp"
+      "url": "https://mcp.arfiti.com/streamable/mcp"
     }
   }
 }

@@ -1,50 +1,50 @@
 {
   "artifi-core-budget-planning": {
-    "version": "1.0.4",
-    "content_hash": "fb48f923fe1350e3f863a3826758e5cb844cf44ab3341e39f223cc4d88ca4f44"
+    "version": "1.0.5",
+    "content_hash": "13e34f2d668fad88a5a949044dd8ac02773f8e20435d6bc3f56d4f38c4e8bad7"
   },
   "artifi-core-cost-allocation": {
-    "version": "2.0.4",
-    "content_hash": "2e2d4be0fb34b23d3346486bd7b0f0db76c29ef2111213b351bc0b1ea3b5a9f7"
+    "version": "2.0.5",
+    "content_hash": "2f64f6e423da23dc33ea352a8707671386cc2a5c89470bc1ac7bc8ada48889dd"
   },
   "artifi-core-country-setup": {
-    "version": "1.0.3",
-    "content_hash": "eefd5e5e0e80d88d701ad5ce54ed613a1a77cf02a5e9b5317c84e189e69784f7"
+    "version": "1.0.6",
+    "content_hash": "c5457899192d891363ea8a396ab07822f2d9b7fcba5f69bba2fce0d903c33ad8"
   },
   "artifi-core-financial-reports": {
-    "version": "1.0.6",
-    "content_hash": "5b97b0559f00ca8b0cbf2747dcc7828cad6164d0a373b4d3e780896bac2fcb67"
+    "version": "1.0.7",
+    "content_hash": "05b9ee682c1ad3412c9b4e3c77db3e3ab54ae1b2aa8968f02bf00205efd9310c"
   },
   "artifi-core-implementation-consultant": {
-    "version": "1.0.4",
-    "content_hash": "8bd1b948a235a10b15e078255124ffa06848691e88b88eafbf12f4dcadabe1f3"
+    "version": "1.0.5",
+    "content_hash": "6f7df7106f3e0539dfba68594633dbbc97f430a820ec23e3fde02ada55375fe6"
   },
   "artifi-core-reconciliation": {
-    "version": "1.1.0",
-    "content_hash": "1d8123cc90b66e821e4a432a416b2ce351c084160074b0f8c256d70b18ac8e5d"
+    "version": "1.1.1",
+    "content_hash": "8a854cd5156071ad3901b20b491b9495fce56ed8f08d977a1bcfcc6c760a5013"
   },
   "artifi-credit-intelligence": {
-    "version": "1.0.3",
-    "content_hash": "da04add2041181ea51b66724529943c7e98ed82ea29493bdb1e9e5b60b3c282f"
+    "version": "1.0.4",
+    "content_hash": "df2e814cd2184c4197524da026b17cae22c22312c8773cc409e14ba0ec0ff764"
   },
   "artifi-ee-annual-report": {
-    "version": "1.0.3",
-    "content_hash": "0f6101064fbc2939ca2b73b792f8c6b0ed301a028a1857b730f2bf1d02f5eb45"
+    "version": "1.0.4",
+    "content_hash": "a468443706571d900e3f1f7e70a7acb5b38a6d74d341a0c197d957347a68e300"
   },
   "artifi-ee-payroll-calculator": {
-    "version": "1.1.3",
-    "content_hash": "650c9c429ba3673985e92da620529b112f24a1c16efd703b3b5f56ec835b9880"
+    "version": "1.1.4",
+    "content_hash": "5a3d9028466f9bbc73536e03ea8f309b7b02d49f6f10e568d34ee63997af7853"
   },
   "artifi-ee-vat-declaration": {
-    "version": "2.2.1",
-    "content_hash": "31c09ada5a949f2c3e3102c65443945f921400ffc7ce3410e7e027099ab12f15"
+    "version": "2.2.3",
+    "content_hash": "c39e28dd7ee6a4ae40d03c59d449f441dd46029b098c7fc116820cb6ee41d27e"
   },
   "artifi-ee-year-end-bookkeeping": {
-    "version": "1.0.6",
-    "content_hash": "1b8f8d81cda96618ff91559bf52f10696ba8faa9befb0f50d0dac1aa6896e0f0"
+    "version": "1.0.8",
+    "content_hash": "56667537756b7f4ce63b3aa1581e632cc8a69ed90f89da295f9d6619720ac90c"
   },
   "artifi-fund-servicing": {
-    "version": "0.1.3",
-    "content_hash": "dffc08f035a05bf3b6fd4b92e84e24fd7b4f55d216c4aba1b81b86da33c0ddd0"
+    "version": "0.1.4",
+    "content_hash": "8f0c092880d1eded05d46e52e3854a0813473404b0d14257d5be1246e3003664"
   }
 }

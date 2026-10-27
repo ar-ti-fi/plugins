@@ -89,7 +89,7 @@ be a real transport — `http` (alias `streamable-http`), `sse`, `ws`, or `stdio
 A remote endpoint uses `"type": "http"`:
 
 ```json
-{ "mcpServers": { "arfiti": { "type": "http", "url": "https://mcp.ar-ti-fi.com/mcp" } } }
+{ "mcpServers": { "arfiti": { "type": "http", "url": "https://mcp.arfiti.com/streamable/mcp" } } }
 ```
 
 `"type": "url"` is **not** a transport. It shipped from April to 2026-08-19 and
@@ -98,6 +98,11 @@ rejected the entire marketplace with a generic "Marketplace sync failed", so no
 plugin was installable there. `claude plugin validate` does not read `.mcp.json`,
 so nothing caught it. `plugins/scripts/check_mcp_configs.py` now runs in the
 publish workflow and fails the build on an invalid transport.
+
+The canonical production endpoint is `https://mcp.arfiti.com/streamable/mcp`.
+After the October 2026 migration, update installed plugins to the new patch
+versions; cached earlier releases still contain the old `/mcp` URL. Reconnect
+the MCP connection if prompted. Updating source does not rewrite installed caches.
 
 ## Versioning (required on every content change)
 

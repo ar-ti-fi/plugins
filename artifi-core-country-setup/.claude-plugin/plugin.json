@@ -1,8 +1,8 @@
 {
   "name": "artifi-core-country-setup",
-  "description": "Generate country-specific tax and payroll configuration templates for the Artifi ERP onboarding system. Researches tax systems, validates findings against official sources, and outputs a structured JSON template.",
-  "version": "1.0.3",
+  "description": "Generate country-specific tax and payroll configuration templates for the Arfiti ERP onboarding system. Researches tax systems, validates findings against official sources, and outputs a structured JSON template.",
+  "version": "1.0.6",
   "author": {
-    "name": "Artifi"
+    "name": "Arfiti"
   }
 }

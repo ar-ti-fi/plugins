@@ -2,9 +2,9 @@
 
 This reference helps set up a chart of accounts for Estonian companies, whether importing from a prior system or starting fresh.
 
-## The Merit Aktiva default chart (what Artifi imports)
+## The Merit Aktiva default chart (what Arfiti imports)
 
-Merit's default Estonian chart (RTJ-based) is classified account by account in Artifi's
+Merit's default Estonian chart (RTJ-based) is classified account by account in Arfiti's
 `mcp-server/src/data/templates/ee_standard_subtypes.json`. Its structure:
 
 | Range | Account type | Contents (examples) |
